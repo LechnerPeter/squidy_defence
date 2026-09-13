@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg-basic" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c0dbff"/>
+      <stop offset="1" stop-color="#0058cd"/>
+    </linearGradient>
+  </defs>
+  <polygon points="32.00,3.00 53.07,32.00 32.00,61.00 10.93,32.00" fill="url(#bg-basic)" stroke="#003984" stroke-width="2.5" stroke-linejoin="round"/>
+  <ellipse cx="24" cy="14" rx="20" ry="9" fill="#ffffff" opacity="0.10"/>
+  <g opacity="0.35" transform="translate(1.6,2.4) translate(32,32) scale(0.8) translate(-32,-32)">
+<polygon points="23,27 41,27 47,50 17,50" fill="#14141a"/>
+    <circle cx="32" cy="25" r="14" fill="#14141a"/>
+    <circle cx="32" cy="25" r="5.6" fill="#000000" opacity="0.32"/>
+    
+  </g>
+  <g transform="translate(32,32) scale(0.8) translate(-32,-32)">
+<polygon points="23,27 41,27 47,50 17,50" fill="#f4f2f0"/>
+    <circle cx="32" cy="25" r="14" fill="#f4f2f0"/>
+    <circle cx="32" cy="25" r="5.6" fill="#000000" opacity="0.32"/>
+    
+  </g>
+</svg>

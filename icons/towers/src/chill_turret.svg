@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg-chill_turret" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#0076ed"/>
+    </linearGradient>
+  </defs>
+  <polygon points="32.00,3.00 61.00,32.00 32.00,61.00 3.00,32.00" fill="url(#bg-chill_turret)" stroke="#004c99" stroke-width="2.5" stroke-linejoin="round"/>
+  <ellipse cx="24" cy="14" rx="20" ry="9" fill="#ffffff" opacity="0.10"/>
+  <g opacity="0.35" transform="translate(1.6,2.4)">
+<polygon points="22,30 38,30 43,50 17,50" fill="#14141a"/>
+    <circle cx="30" cy="28" r="12" fill="#14141a"/>
+    <circle cx="30" cy="28" r="4.8" fill="#000000" opacity="0.32"/>
+    <g transform="translate(15,2) scale(0.3)"><line x1="32" y1="32" x2="32.0" y2="13.0" stroke="#14141a" stroke-width="4.5" stroke-linecap="round"/><line x1="32" y1="32" x2="48.5" y2="22.5" stroke="#14141a" stroke-width="4.5" stroke-linecap="round"/><line x1="32" y1="32" x2="48.5" y2="41.5" stroke="#14141a" stroke-width="4.5" stroke-linecap="round"/><line x1="32" y1="32" x2="32.0" y2="51.0" stroke="#14141a" stroke-width="4.5" stroke-linecap="round"/><line x1="32" y1="32" x2="15.5" y2="41.5" stroke="#14141a" stroke-width="4.5" stroke-linecap="round"/><line x1="32" y1="32" x2="15.5" y2="22.5" stroke="#14141a" stroke-width="4.5" stroke-linecap="round"/></g>
+  </g>
+  <g>
+<polygon points="22,30 38,30 43,50 17,50" fill="#f4f2f0"/>
+    <circle cx="30" cy="28" r="12" fill="#f4f2f0"/>
+    <circle cx="30" cy="28" r="4.8" fill="#000000" opacity="0.32"/>
+    <g transform="translate(15,2) scale(0.3)"><line x1="32" y1="32" x2="32.0" y2="13.0" stroke="#f4f2f0" stroke-width="4.5" stroke-linecap="round"/><line x1="32" y1="32" x2="48.5" y2="22.5" stroke="#f4f2f0" stroke-width="4.5" stroke-linecap="round"/><line x1="32" y1="32" x2="48.5" y2="41.5" stroke="#f4f2f0" stroke-width="4.5" stroke-linecap="round"/><line x1="32" y1="32" x2="32.0" y2="51.0" stroke="#f4f2f0" stroke-width="4.5" stroke-linecap="round"/><line x1="32" y1="32" x2="15.5" y2="41.5" stroke="#f4f2f0" stroke-width="4.5" stroke-linecap="round"/><line x1="32" y1="32" x2="15.5" y2="22.5" stroke="#f4f2f0" stroke-width="4.5" stroke-linecap="round"/></g>
+  </g>
+  <g>
+    <polygon points="24.0,46.00 26.91,50.0 24.0,54.00 21.09,50.0" fill="#d9a83f" stroke="#00000099" stroke-width="0.6"/>
+    <polygon points="32.0,46.00 34.91,50.0 32.0,54.00 29.09,50.0" fill="#d9a83f" stroke="#00000099" stroke-width="0.6"/>
+    <polygon points="40.0,46.00 41.30,50.0 40.0,54.00 38.70,50.0" fill="#5ec2e6" stroke="#00000099" stroke-width="0.6"/>
+  </g>
+</svg>

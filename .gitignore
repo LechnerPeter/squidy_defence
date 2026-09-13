@@ -1,0 +1,30 @@
+# Godot 4+ local cache (import data, mono build output, editor state) -
+# fully regenerable from the project files, never needs to be committed.
+.godot/
+
+# Godot export artifacts, if this project is ever exported
+export.cfg
+export_presets.cfg
+*.pck
+*.exe
+*.pdb
+*.dmg
+*.app
+
+# .NET / C# build output (Godot builds into .godot/mono/temp, but a plain
+# `dotnet build` from the repo root drops these here too)
+bin/
+obj/
+*.user
+
+# Editor-specific settings (this repo's .vscode/settings.json hardcodes a
+# local machine path to the Godot binary, not something to share)
+.vscode/
+
+# Personal Claude Code overrides - .claude/settings.json (shared project
+# permissions) stays tracked
+.claude/settings.local.json
+
+# OS cruft
+.DS_Store
+Thumbs.db

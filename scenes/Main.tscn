@@ -1,0 +1,262 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/Main.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/UI.cs" id="2"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+current = true
+
+[node name="PathLine" type="Line2D" parent="."]
+width = 20.0
+default_color = Color(0.32, 0.32, 0.36, 1.0)
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+
+[node name="EnemyContainer" type="Node2D" parent="."]
+
+[node name="TowerContainer" type="Node2D" parent="."]
+
+[node name="ProjectileContainer" type="Node2D" parent="."]
+
+[node name="HoverOverlay" type="Node2D" parent="."]
+
+[node name="UI" type="CanvasLayer" parent="."]
+unique_name_in_owner = true
+script = ExtResource("2")
+
+[node name="TopBarBg" type="ColorRect" parent="UI"]
+unique_name_in_owner = true
+anchor_right = 1.0
+offset_bottom = 92.0
+color = Color(0.05, 0.05, 0.09, 0.85)
+
+[node name="WikiButton" type="Button" parent="UI"]
+unique_name_in_owner = true
+offset_left = 20.0
+offset_top = 50.0
+offset_right = 100.0
+offset_bottom = 82.0
+text = "Wiki"
+
+[node name="CurseIconRow" type="HBoxContainer" parent="UI"]
+unique_name_in_owner = true
+anchor_right = 1.0
+offset_left = 116.0
+offset_top = 50.0
+offset_right = -20.0
+offset_bottom = 86.0
+theme_override_constants/separation = 6
+
+[node name="GoldLabel" type="Label" parent="UI"]
+unique_name_in_owner = true
+offset_left = 20.0
+offset_top = 14.0
+offset_right = 220.0
+offset_bottom = 42.0
+theme_override_font_sizes/font_size = 20
+text = "Gold: 300"
+
+[node name="LivesLabel" type="Label" parent="UI"]
+unique_name_in_owner = true
+offset_left = 260.0
+offset_top = 14.0
+offset_right = 460.0
+offset_bottom = 42.0
+theme_override_font_sizes/font_size = 20
+text = "Lives: 20"
+
+[node name="WaveLabel" type="Label" parent="UI"]
+unique_name_in_owner = true
+offset_left = 500.0
+offset_top = 14.0
+offset_right = 780.0
+offset_bottom = 42.0
+theme_override_font_sizes/font_size = 20
+text = "Wave: 0 / 15"
+
+[node name="WaveButton" type="Button" parent="UI"]
+unique_name_in_owner = true
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -230.0
+offset_top = 10.0
+offset_right = -20.0
+offset_bottom = 46.0
+theme_override_font_sizes/font_size = 16
+text = "Start Wave"
+
+[node name="Speed1xButton" type="Button" parent="UI"]
+unique_name_in_owner = true
+toggle_mode = true
+offset_left = 800.0
+offset_top = 10.0
+offset_right = 870.0
+offset_bottom = 46.0
+text = "1x"
+
+[node name="Speed2xButton" type="Button" parent="UI"]
+unique_name_in_owner = true
+toggle_mode = true
+offset_left = 880.0
+offset_top = 10.0
+offset_right = 950.0
+offset_bottom = 46.0
+text = "2x"
+
+[node name="Speed4xButton" type="Button" parent="UI"]
+unique_name_in_owner = true
+toggle_mode = true
+offset_left = 960.0
+offset_top = 10.0
+offset_right = 1030.0
+offset_bottom = 46.0
+text = "4x"
+
+[node name="StatusLabel" type="Label" parent="UI"]
+unique_name_in_owner = true
+anchor_right = 1.0
+offset_left = 200.0
+offset_top = 100.0
+offset_right = -520.0
+offset_bottom = 128.0
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(1.0, 0.4, 0.4, 1.0)
+horizontal_alignment = 1
+text = ""
+
+[node name="PenroseViewButton" type="Button" parent="UI"]
+unique_name_in_owner = true
+toggle_mode = true
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0
+offset_top = 48.0
+offset_right = -20.0
+offset_bottom = 80.0
+theme_override_font_sizes/font_size = 14
+text = "Penrose View"
+
+[node name="SidebarBg" type="ColorRect" parent="UI"]
+unique_name_in_owner = true
+anchor_left = 1.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -320.0
+offset_top = 92.0
+offset_right = 0.0
+offset_bottom = 0.0
+color = Color(0.05, 0.05, 0.09, 0.9)
+
+[node name="TowerInfoName" type="Label" parent="UI"]
+unique_name_in_owner = true
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -308.0
+offset_top = 104.0
+offset_right = -12.0
+offset_bottom = 132.0
+theme_override_font_sizes/font_size = 20
+text = "No Tower Selected"
+
+[node name="TowerInfoFlavor" type="Label" parent="UI"]
+unique_name_in_owner = true
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -308.0
+offset_top = 136.0
+offset_right = -12.0
+offset_bottom = 188.0
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.75, 0.75, 0.82, 1.0)
+autowrap_mode = 3
+text = "Click a tower on the field to inspect it, or pick one below to build."
+
+[node name="TowerInfoEffects" type="HBoxContainer" parent="UI"]
+unique_name_in_owner = true
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -308.0
+offset_top = 190.0
+offset_right = -12.0
+offset_bottom = 210.0
+theme_override_constants/separation = 4
+
+[node name="TowerInfoStatsScroll" type="ScrollContainer" parent="UI"]
+unique_name_in_owner = true
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -308.0
+offset_top = 216.0
+offset_right = -12.0
+offset_bottom = 316.0
+horizontal_scroll_mode = 0
+
+[node name="TowerInfoStats" type="Label" parent="UI/TowerInfoStatsScroll"]
+unique_name_in_owner = true
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 15
+text = ""
+
+[node name="SidebarDivider" type="ColorRect" parent="UI"]
+unique_name_in_owner = true
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -308.0
+offset_top = 324.0
+offset_right = -12.0
+offset_bottom = 326.0
+color = Color(1.0, 1.0, 1.0, 0.15)
+
+[node name="TowerShopScroll" type="ScrollContainer" parent="UI"]
+unique_name_in_owner = true
+anchor_left = 1.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -308.0
+offset_top = 332.0
+offset_right = -12.0
+offset_bottom = 0.0
+horizontal_scroll_mode = 0
+
+[node name="TowerShopList" type="VBoxContainer" parent="UI/TowerShopScroll"]
+unique_name_in_owner = true
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="GameOverPanel" type="ColorRect" parent="UI"]
+unique_name_in_owner = true
+process_mode = 3
+visible = false
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -100.0
+offset_right = 250.0
+offset_bottom = 100.0
+color = Color(0.02, 0.02, 0.05, 0.92)
+
+[node name="GameOverLabel" type="Label" parent="UI/GameOverPanel"]
+unique_name_in_owner = true
+offset_left = 20.0
+offset_top = 30.0
+offset_right = 480.0
+offset_bottom = 80.0
+theme_override_font_sizes/font_size = 32
+horizontal_alignment = 1
+text = "Game Over"
+
+[node name="RetryButton" type="Button" parent="UI/GameOverPanel"]
+unique_name_in_owner = true
+offset_left = 180.0
+offset_top = 130.0
+offset_right = 320.0
+offset_bottom = 170.0
+text = "Play Again"

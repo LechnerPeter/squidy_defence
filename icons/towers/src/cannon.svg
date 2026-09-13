@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg-cannon" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e8a182"/>
+      <stop offset="1" stop-color="#8c3d1a"/>
+    </linearGradient>
+  </defs>
+  <polygon points="32.00,3.00 41.42,32.00 32.00,61.00 22.58,32.00" fill="url(#bg-cannon)" stroke="#5a2711" stroke-width="2.5" stroke-linejoin="round"/>
+  <ellipse cx="24" cy="14" rx="20" ry="9" fill="#ffffff" opacity="0.10"/>
+  <g opacity="0.35" transform="translate(1.6,2.4)">
+    <polygon points="32,12 38,24 35,34 37,46 32,50 27,46 29,34 26,24" fill="#14141a"/>
+  </g>
+  <g>
+    <polygon points="32,12 38,24 35,34 37,46 32,50 27,46 29,34 26,24" fill="#f4f2f0"/>
+  </g>
+</svg>
