@@ -22,6 +22,12 @@ public partial class UI : CanvasLayer {
 	public delegate void ChoiceMadeEventHandler(string optionId);
 	[Signal]
 	public delegate void PenroseViewToggledEventHandler(bool enabled);
+	[Signal]
+	public delegate void PenroseFlipAllTilesPressedEventHandler();
+	[Signal]
+	public delegate void PenroseFlipAllStarsPressedEventHandler();
+	[Signal]
+	public delegate void PenroseRotateAllCirclesPressedEventHandler();
 
 	private Label _goldLabel;
 	private Label _livesLabel;
@@ -40,6 +46,9 @@ public partial class UI : CanvasLayer {
 	private Button _speed4XButton;
 	private Button _waveButton;
 	private Button _penroseViewButton;
+	private Button _penroseFlipAllTilesButton;
+	private Button _penroseFlipAllStarsButton;
+	private Button _penroseRotateAllCirclesButton;
 	private ColorRect _topBarBg;
 	private ColorRect _sidebarBg;
 	private ColorRect _sidebarDivider;
@@ -102,6 +111,7 @@ public partial class UI : CanvasLayer {
 		SelectSpeed(1.0f);
 		_waveButton.Pressed += () => EmitSignal(SignalName.StartWavePressed);
 		_penroseViewButton.Toggled += OnPenroseViewToggled;
+		BuildPenroseDebugButtons();
 		RebuildTowerShop();
 		_retryButton.Pressed += () => EmitSignal(SignalName.RetryPressed);
 		GameManager.Instance.GoldChanged += OnGoldChanged;
@@ -248,6 +258,39 @@ public partial class UI : CanvasLayer {
 		EmitSignal(SignalName.SpeedSelected, multiplier);
 	}
 
+	// Three manual local-search buttons, stacked below the Penrose View
+	// toggle itself but only ever visible alongside it (see
+	// OnPenroseViewToggled) - each is a one-click, exhaustive pass mirroring
+	// one of PenroseTiling's automatic repair moves (see
+	// Main.OnPenroseFlipAllTiles/OnPenroseFlipAllStars/
+	// OnPenroseRotateAllCircles), exposed here so the effect of each move can
+	// be watched directly on the live overlay, clicked repeatedly to
+	// converge further the same way manually right/left-clicking already did.
+	private void BuildPenroseDebugButtons() {
+		_penroseFlipAllTilesButton = MakePenroseDebugButton("Flip All Tiles", 88.0f);
+		_penroseFlipAllTilesButton.Pressed += () => EmitSignal(SignalName.PenroseFlipAllTilesPressed);
+		_penroseFlipAllStarsButton = MakePenroseDebugButton("Flip All Stars", 128.0f);
+		_penroseFlipAllStarsButton.Pressed += () => EmitSignal(SignalName.PenroseFlipAllStarsPressed);
+		_penroseRotateAllCirclesButton = MakePenroseDebugButton("Rotate All Circles", 168.0f);
+		_penroseRotateAllCirclesButton.Pressed += () => EmitSignal(SignalName.PenroseRotateAllCirclesPressed);
+	}
+
+	private Button MakePenroseDebugButton(string text, float offsetTop) {
+		var button = new Button {
+			AnchorLeft = 1.0f,
+			AnchorRight = 1.0f,
+			OffsetLeft = -260.0f,
+			OffsetRight = -20.0f,
+			OffsetTop = offsetTop,
+			OffsetBottom = offsetTop + 32.0f,
+			Text = text,
+			Visible = false,
+		};
+		button.AddThemeFontSizeOverride("font_size", 14);
+		AddChild(button);
+		return button;
+	}
+
 	// "Penrose View" hides every bit of chrome and gameplay dressing (the top
 	// bar, sidebar, and - via the PenroseViewToggled signal - Main's own
 	// towers/enemies/projectiles/path/hover layers) so only the tiling itself
@@ -278,6 +321,9 @@ public partial class UI : CanvasLayer {
 		_towerShopScroll.Visible = chromeVisible;
 		if (enabled)
 			_statusLabel.Visible = false;
+		_penroseFlipAllTilesButton.Visible = enabled;
+		_penroseFlipAllStarsButton.Visible = enabled;
+		_penroseRotateAllCirclesButton.Visible = enabled;
 		EmitSignal(SignalName.PenroseViewToggled, enabled);
 	}
 

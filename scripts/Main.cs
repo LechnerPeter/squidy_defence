@@ -1,4 +1,5 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 
 public partial class Main : Node2D {
@@ -53,6 +54,12 @@ public partial class Main : Node2D {
 	private bool _isPanning;
 
 	private PenroseGrid _grid;
+
+	// Tile ids currently failing PenroseTileRules (a mirrored tile, an
+	// invalid side-label connection, or a red/blue arc clash) - shown as a
+	// highlight in Penrose View, and refreshed after every manual 180-degree
+	// flip so the effect of a fix (or of making things worse) is immediate.
+	private HashSet<int> _penroseProblemTiles = new HashSet<int>();
 	private List<Vector2> _currentPath = new List<Vector2>();
 	private List<Vector2> _currentSwimPath = new List<Vector2>();
 	private readonly HashSet<int> _waterCells = new HashSet<int>();
@@ -107,6 +114,7 @@ public partial class Main : Node2D {
 		_grid = new PenroseGrid(GameData.PenroseEdgeLength, GameData.PenroseRadius);
 		if (OS.IsDebugBuild())
 			GD.Print($"Penrose grid: {_grid.Tiles.Count} tiles, {_grid.Vertices.Count} vertices.");
+		_penroseProblemTiles = ComputePenroseProblemTiles();
 		SetupCamera();
 		SpawnRocks();
 		SpawnWater();
@@ -121,6 +129,9 @@ public partial class Main : Node2D {
 		_ui.SpeedSelected += OnSpeedSelected;
 		_ui.ChoiceMade += OnUiChoiceMade;
 		_ui.PenroseViewToggled += OnPenroseViewToggled;
+		_ui.PenroseFlipAllTilesPressed += OnPenroseFlipAllTiles;
+		_ui.PenroseFlipAllStarsPressed += OnPenroseFlipAllStars;
+		_ui.PenroseRotateAllCirclesPressed += OnPenroseRotateAllCircles;
 		RefreshTowerPrices();
 		_hoverOverlay.Draw += DrawHoverOverlay;
 	}
@@ -207,7 +218,9 @@ public partial class Main : Node2D {
 		if (@event is InputEventMouseButton mouseEvent) {
 			if (mouseEvent.Pressed) {
 				if (mouseEvent.ButtonIndex == MouseButton.Left) {
-					if (_placingBuffTileType != "")
+					if (_penroseViewOnly)
+						FlipPenroseTileAt(GetGlobalMousePosition());
+					else if (_placingBuffTileType != "")
 						TryPlaceBuffTileAt(GetGlobalMousePosition());
 					else if (_selectedTowerType == "")
 						TryInspectAt(GetGlobalMousePosition());
@@ -215,7 +228,10 @@ public partial class Main : Node2D {
 						TryPlaceTowerAt(GetGlobalMousePosition());
 				}
 				else if (mouseEvent.ButtonIndex == MouseButton.Right) {
-					_ui.ClearSelection();
+					if (_penroseViewOnly)
+						RotatePenroseTripletAt(GetGlobalMousePosition());
+					else
+						_ui.ClearSelection();
 				}
 				else if (mouseEvent.ButtonIndex == MouseButton.Middle) {
 					_isPanning = true;
@@ -1662,8 +1678,11 @@ public partial class Main : Node2D {
 			DrawTileOutline(tile.Id, new Color(1, 1, 1, 0.08f));
 		foreach (PenroseTile tile in _grid.Tiles)
 			DrawMatchingRuleArcs(tile);
-		if (_penroseViewOnly)
-			return; // just the tiling and its arcs - no entry/exit markers, buffs, or anything gameplay-related
+		if (_penroseViewOnly) {
+			foreach (int id in _penroseProblemTiles)
+				DrawTileOutline(id, new Color(1.0f, 1.0f, 0.0f, 0.9f), 3.0f);
+			return; // just the tiling, its arcs, and problem highlights - no entry/exit markers, buffs, or anything gameplay-related
+		}
 		DrawTile(_grid.Entry, new Color(0.3f, 0.9f, 0.4f, 0.5f));
 		DrawTile(_grid.Exit, new Color(0.9f, 0.3f, 0.3f, 0.5f));
 		foreach (KeyValuePair<int, string> entry in _buffTiles) {
@@ -1792,53 +1811,113 @@ public partial class Main : Node2D {
 
 	private Vector2[] TilePoints(int tileId) => _grid.Tiles[tileId].Corners;
 
-	private void DrawTileOutline(int tileId, Color color) {
+	private void DrawTileOutline(int tileId, Color color, float width = 1.0f) {
 		Vector2[] pts = TilePoints(tileId);
 		for (int i = 0; i < pts.Length; i++)
-			DrawLine(pts[i], pts[(i + 1) % pts.Length], color, 1.0f);
+			DrawLine(pts[i], pts[(i + 1) % pts.Length], color, width);
 	}
 
 	private void DrawTile(int tileId, Color color) {
 		DrawColoredPolygon(TilePoints(tileId), color);
 	}
 
-	// The colored-arc "matching rule" decoration from the classic Penrose P3
-	// reference diagram (Wikipedia's "Penrose-tiles-bump-and-color-coded.svg")
-	// - see PenroseTiling.ValidateMatchingRule/AssignCurveColors for the full
-	// derivation. Each rhombus rounds off two opposite corners with an arc
-	// centered ON that corner: a thin tile's two 144-degree corners (both the
-	// same small radius), a thick tile's two 72-degree corners (one small,
-	// one large - which one depends on PenroseVertex.ColorA, cached per-
-	// corner as CornerColorA). PAINT color is a separate property
-	// (CornerCurveColorA): every arc belonging to the same connected curve -
-	// possibly spanning many tiles - shares one color, which is what
-	// guarantees a red arc only ever continues into another red arc, never
-	// blue, exactly the rule that keeps this tiling from ever closing up
-	// into a repeating, periodic pattern.
-	private const float ArcScale = GameData.PenroseEdgeLength / 30.0f; // reference SVG's tile edge was 30 units
-	private const float ThinArcRadius = 6.0f * ArcScale;
-	private const float ThickBigArcRadius = 24.0f * ArcScale;
-	private const float ThickSmallArcRadius = 6.0f * ArcScale;
+	// The colored-arc matching-rule decoration - see PenroseTileRules for the
+	// full rule (which corners are decorated, and their color/radius) and
+	// PenroseTiling.ResolveOrientations for how each tile's orientation is
+	// chosen so neighboring arcs actually connect.
 	private static readonly Color ArcRed = new Color(1.0f, 0.25f, 0.25f, 0.4f);
 	private static readonly Color ArcBlue = new Color(0.35f, 0.45f, 1.0f, 0.4f);
 
 	private void DrawMatchingRuleArcs(PenroseTile tile) {
-		if (tile.IsThin) {
-			DrawCornerArc(tile, 1, ThinArcRadius, tile.CornerCurveColorA[1] ? ArcRed : ArcBlue);
-			DrawCornerArc(tile, 3, ThinArcRadius, tile.CornerCurveColorA[3] ? ArcRed : ArcBlue);
-		} else {
-			DrawCornerArc(tile, 0, tile.CornerColorA[0] ? ThickBigArcRadius : ThickSmallArcRadius, tile.CornerCurveColorA[0] ? ArcRed : ArcBlue);
-			DrawCornerArc(tile, 2, tile.CornerColorA[2] ? ThickBigArcRadius : ThickSmallArcRadius, tile.CornerCurveColorA[2] ? ArcRed : ArcBlue);
+		foreach (ArcGeometry arc in PenroseTileRules.GetArcs(ToPenroseTileInstance(tile), GameData.PenroseEdgeLength)) {
+			float angleA = (arc.EndpointTowardPrev - arc.Center).Angle();
+			float angleB = (arc.EndpointTowardNext - arc.Center).Angle();
+			float sweep = Mathf.Wrap(angleB - angleA, -Mathf.Pi, Mathf.Pi);
+			Color color = arc.Color == ArcColor.Red ? ArcRed : ArcBlue;
+			DrawArc(arc.Center, arc.Radius, angleA, angleA + sweep, 12, color, 2.0f, true);
 		}
 	}
 
-	private void DrawCornerArc(PenroseTile tile, int cornerIndex, float radius, Color color) {
-		Vector2 corner = tile.Corners[cornerIndex];
-		Vector2 neighborA = tile.Corners[(cornerIndex + 3) % 4];
-		Vector2 neighborB = tile.Corners[(cornerIndex + 1) % 4];
-		float angleA = (neighborA - corner).Angle();
-		float angleB = (neighborB - corner).Angle();
-		float sweep = Mathf.Wrap(angleB - angleA, -Mathf.Pi, Mathf.Pi);
-		DrawArc(corner, radius, angleA, angleA + sweep, 12, color, 2.0f, true);
+	private static PenroseTileInstance ToPenroseTileInstance(PenroseTile tile) =>
+		new PenroseTileInstance { Kind = tile.IsThin ? TileKind.Thin : TileKind.Thick, Corners = tile.Corners };
+
+	private HashSet<int> ComputePenroseProblemTiles() {
+		var instances = new List<PenroseTileInstance>(_grid.Tiles.Count);
+		foreach (PenroseTile tile in _grid.Tiles)
+			instances.Add(ToPenroseTileInstance(tile));
+		return PenroseTileRules.FindProblemTiles(instances, GameData.PenroseEdgeLength);
+	}
+
+	// Manual override for the automatic orientation solver (see
+	// PenroseTiling.ResolveOrientations): lets you click a tile in Penrose
+	// View to relabel it by the same 180-degree "which corner is 0" shift
+	// used everywhere else in this system - the tile's real shape and
+	// position don't change, only which of its two acute (or two obtuse)
+	// corners plays which PenroseTileRules role. Immediately re-checks every
+	// tile afterward, so the effect - fixed, moved, or made worse - shows up
+	// right away rather than needing a restart.
+	private void FlipPenroseTileAt(Vector2 pos) {
+		int cell = _grid.WorldToCell(pos);
+		PenroseTile tile = _grid.Tiles[cell];
+		tile.Corners = new[] { tile.Corners[2], tile.Corners[3], tile.Corners[0], tile.Corners[1] };
+		tile.CornerVertexIds = new[] { tile.CornerVertexIds[2], tile.CornerVertexIds[3], tile.CornerVertexIds[0], tile.CornerVertexIds[1] };
+		tile.CornerColorA = new[] { tile.CornerColorA[2], tile.CornerColorA[3], tile.CornerColorA[0], tile.CornerColorA[1] };
+		_penroseProblemTiles = ComputePenroseProblemTiles();
+		QueueRedraw();
+	}
+
+	// A "circle" vertex: exactly 2 thin + 1 thick tile meeting at one point,
+	// their decorated corners all the SAME color - see
+	// PenroseTiling.TryFlipCircleTriplet for the detection and the geometric
+	// "hexagon of 3 rhombi" flip itself (shared with the automatic repair
+	// pass PenroseTiling.Generate already runs); this just finds which
+	// vertex the click landed on.
+	private void RotatePenroseTripletAt(Vector2 pos) {
+		int cell = _grid.WorldToCell(pos);
+		PenroseTile clicked = _grid.Tiles[cell];
+
+		foreach (int vertexId in clicked.VertexIds) {
+			if (!PenroseTiling.TryFlipCircleTriplet(_grid.Tiles, _grid.Vertices, vertexId))
+				continue;
+			_grid.RefreshAdjacency();
+			_penroseProblemTiles = ComputePenroseProblemTiles();
+			QueueRedraw();
+			return;
+		}
+	}
+
+	// The 3 manual "try every X" debug buttons (UI.BuildPenroseDebugButtons) -
+	// each is a single exhaustive pass of one of PenroseTiling's automatic
+	// repair moves, run on demand so its effect can be watched on the live
+	// overlay. Safe to click repeatedly: each pass only ever keeps changes
+	// that provably reduce the problem count, so results converge rather than
+	// oscillate (mirrors manually right/left-clicking the same moves one at a
+	// time). RefreshAdjacency first, since a PREVIOUS single-tile-flip pass
+	// only touches Corners/CornerVertexIds directly (see
+	// PenroseTiling.TryFlipAllSingleTiles) without patching vertex Ring
+	// membership - only relevant here because 2 of these 3 buttons read
+	// Ring composition to find their candidates.
+	private void OnPenroseFlipAllTiles() {
+		int flipped = PenroseTiling.TryFlipAllSingleTiles(_grid.Tiles, GameData.PenroseEdgeLength);
+		_grid.RefreshAdjacency();
+		_penroseProblemTiles = ComputePenroseProblemTiles();
+		QueueRedraw();
+		_ui.ShowStatus($"Flipped {flipped} tile(s) - {_penroseProblemTiles.Count} problem tile(s) remain.");
+	}
+
+	private void OnPenroseFlipAllStars() {
+		int flipped = PenroseTiling.TryFlipAllStarsInsideOut(_grid.Tiles, _grid.Vertices, GameData.PenroseEdgeLength);
+		_grid.RefreshAdjacency();
+		_penroseProblemTiles = ComputePenroseProblemTiles();
+		QueueRedraw();
+		_ui.ShowStatus($"Flipped {flipped} star(s) - {_penroseProblemTiles.Count} problem tile(s) remain.");
+	}
+
+	private void OnPenroseRotateAllCircles() {
+		int flipped = PenroseTiling.TryFlipAllCircleTriplets(_grid.Tiles, _grid.Vertices, GameData.PenroseEdgeLength);
+		_grid.RefreshAdjacency();
+		_penroseProblemTiles = ComputePenroseProblemTiles();
+		QueueRedraw();
+		_ui.ShowStatus($"Rotated {flipped} circle(s) - {_penroseProblemTiles.Count} problem tile(s) remain.");
 	}
 }

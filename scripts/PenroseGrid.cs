@@ -12,24 +12,38 @@ using System.Linq;
 // possible - only the coordinate type (Vector2I -> int) is different.
 public class PenroseGrid {
 	public List<PenroseTile> Tiles { get; }
-	public List<PenroseVertex> Vertices { get; }
+	public List<PenroseVertex> Vertices { get; private set; }
 	public int Entry { get; }
 	public int Exit { get; }
 
 	private readonly HashSet<int> _blocked = new HashSet<int>();
 
 	public PenroseGrid(float edgeLength, float radius) {
-		(Tiles, Vertices) = PenroseTiling.Generate(edgeLength, radius);
-		if (OS.IsDebugBuild()) {
+		// Slice the circular patch off-center from the broader pentagrid
+		// pattern instead of from its own perfectly symmetric middle -
+		// a random direction each time, at a fixed fraction of the radius so
+		// the shift is always clearly visible without ever cutting the
+		// slice's far edge outside the pattern this generator can produce.
+		float angle = GD.Randf() * Mathf.Tau;
+		Vector2 cutoutCenter = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * (radius * 0.6f);
+		(Tiles, Vertices) = PenroseTiling.Generate(edgeLength, radius, cutoutCenter);
+		if (OS.IsDebugBuild())
 			PenroseTiling.Validate(Tiles, Vertices);
-			PenroseTiling.ValidateMatchingRule(Tiles);
-		}
 		List<int> boundary = BoundaryTileIds().ToList();
 		// Opposite ends of the patch by X, mirroring how the old rectangular
 		// grid's entry/exit sat at opposite ends of one row.
 		Entry = boundary.OrderBy(id => Tiles[id].Center.X).First();
 		Exit = boundary.OrderByDescending(id => Tiles[id].Center.X).First();
 	}
+
+	// Recomputes EdgeNeighborIds/VertexIds/Ring from the tiles' current corner
+	// positions - needed after any interactive edit that moves tile corners
+	// or reassigns which vertex a corner belongs to (Main.RotatePenroseTripletAt),
+	// since that edit's own incremental bookkeeping only ever needs to be
+	// locally consistent for the one vertex it touched, not globally correct.
+	// Cheap enough (a few hundred tiles) to just do in full rather than trust
+	// partial patching - see PenroseTiling.BuildAdjacency.
+	public void RefreshAdjacency() => Vertices = PenroseTiling.BuildAdjacency(Tiles);
 
 	// Tiles with at least one open (missing-neighbor) edge - the patch's rim,
 	// analogous to the old hex grid's top/bottom border rows.
