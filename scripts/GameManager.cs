@@ -43,6 +43,12 @@ public partial class GameManager : Node {
 	// to show a running strip of every curse active so far, with a stack count.
 	public readonly Dictionary<string, int> CurseCounts = new Dictionary<string, int>();
 
+	// The saved grid Main should load (see GridFile), set by TitleScreen - "" means
+	// generate a new one. Lives on the autoload so it survives the change from the
+	// title scene to Main, and Retry's reload too, so retrying a loaded grid replays
+	// the same board. Deliberately not touched by Reset().
+	public string GridFilePath = "";
+
 	public override void _Ready() {
 		Instance = this;
 	}

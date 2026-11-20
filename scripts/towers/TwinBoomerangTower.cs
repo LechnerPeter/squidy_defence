@@ -11,7 +11,6 @@ public partial class TwinBoomerangTower : BoomerangBase {
 	protected override int BaseCost => 60;
 	protected override int BaseCostStep => 12;
 	protected override float BaseRange => 150.0f;
-	protected override Color BaseColor => new Color(0.75f, 0.35f, 0.55f);
 	protected override Color BaseProjectileColor => new Color(0.85f, 0.55f, 1.0f);
 	protected override bool BaseBoomerang => true;
 	protected override int MultishotArmsPerStack => 2;

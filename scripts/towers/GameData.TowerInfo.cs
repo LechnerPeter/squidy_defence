@@ -136,7 +136,7 @@ public static partial class GameData {
 			// a T2 tower always builds through a multi-cell recipe instead of sitting on
 			// one single tile, so the restriction never applies to it.
 			if (GetTier(type) == 1)
-				lines.Add($"Buildable only on {(damageType == "Elemental" ? "thin" : "thick")} tiles.");
+				lines.Add($"Buildable only on {(s.ContainsKey("needs_thin_tile") && s["needs_thin_tile"].AsBool() ? "thin" : "thick")} tiles.");
 		}
 
 		bool holdsBuffsForPlatform = type == "outpost" || type == "big_outpost";

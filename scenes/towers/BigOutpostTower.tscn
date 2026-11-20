@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/towers/BigOutpostTower.cs" id="1"]
+[ext_resource type="Texture2D" path="res://icons/towers/big_outpost_glyph.png" id="2"]
 
 [node name="BigOutpostTower" type="Node2D"]
 script = ExtResource("1")
@@ -14,3 +15,294 @@ monitoring = true
 
 [node name="FireTimer" type="Timer" parent="."]
 wait_time = 1.0
+
+[node name="Visual" type="Node2D" parent="."]
+show_behind_parent = true
+
+[node name="Ring5Mixed" type="Node2D" parent="Visual"]
+
+[node name="Tile1" type="Polygon2D" parent="Visual/Ring5Mixed"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(0, 10.8774, -41.8465, -2.7194, -67.709, -38.3161, -25.8626, -24.7194)
+vertex_colors = PackedColorArray(0.6018, 0.5368, 0.3604, 1, 0.6805, 0.6164, 0.4399, 1, 0.7726, 0.7095, 0.5331, 1, 0.6939, 0.63, 0.4535, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring5Mixed/Tile1"]
+points = PackedVector2Array(0, 10.8774, -41.8465, -2.7194, -67.709, -38.3161, -25.8626, -24.7194)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile2" type="Polygon2D" parent="Visual/Ring5Mixed"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(0, -60.3161, 25.8626, -24.7194, 0, 10.8774, -25.8625, -24.7193)
+vertex_colors = PackedColorArray(0.7157, 0.652, 0.4755, 1, 0.6235, 0.5588, 0.3824, 1, 0.6018, 0.5368, 0.3604, 1, 0.6939, 0.63, 0.4535, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring5Mixed/Tile2"]
+points = PackedVector2Array(0, -60.3161, 25.8626, -24.7194, 0, 10.8774, -25.8625, -24.7193)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile3" type="Polygon2D" parent="Visual/Ring5Mixed"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(67.709, -38.3161, 41.8465, -2.7193, 0, 10.8774, 25.8626, -24.7193)
+vertex_colors = PackedColorArray(0.5883, 0.5232, 0.3468, 1, 0.5666, 0.5013, 0.3248, 1, 0.6018, 0.5368, 0.3604, 1, 0.6235, 0.5588, 0.3824, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring5Mixed/Tile3"]
+points = PackedVector2Array(67.709, -38.3161, 41.8465, -2.7193, 0, 10.8774, 25.8626, -24.7193)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile4" type="Polygon2D" parent="Visual/Ring5Mixed"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(41.8465, -2.7193, 41.8465, 41.2807, 0, 54.8774, 0, 10.8774)
+vertex_colors = PackedColorArray(0.5666, 0.5013, 0.3248, 1, 0.4962, 0.4301, 0.2536, 1, 0.5314, 0.4657, 0.2892, 1, 0.6018, 0.5368, 0.3604, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring5Mixed/Tile4"]
+points = PackedVector2Array(41.8465, -2.7193, 41.8465, 41.2807, 0, 54.8774, 0, 10.8774)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile5" type="Polygon2D" parent="Visual/Ring5Mixed"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(-41.8465, -2.7194, 0, 10.8774, 0, 54.8774, -41.8465, 41.2806)
+vertex_colors = PackedColorArray(0.6805, 0.6164, 0.4399, 1, 0.6018, 0.5368, 0.3604, 1, 0.5314, 0.4657, 0.2892, 1, 0.6101, 0.5452, 0.3688, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring5Mixed/Tile5"]
+points = PackedVector2Array(-41.8465, -2.7194, 0, 10.8774, 0, 54.8774, -41.8465, 41.2806)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Icon" type="Sprite2D" parent="Visual/Ring5Mixed"]
+position = Vector2(0, 10.5)
+scale = Vector2(0.275, 0.275)
+texture = ExtResource("2")
+offset = Vector2(-3, 15)
+
+[node name="Ring7" type="Node2D" parent="Visual"]
+visible = false
+
+[node name="Tile1" type="Polygon2D" parent="Visual/Ring7"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(-67.7091, 45.3087, -41.8464, 9.712, 0, -3.8848, -25.8626, 31.712)
+vertex_colors = PackedColorArray(0.6374, 0.5729, 0.3964, 1, 0.6599, 0.5956, 0.4191, 1, 0.6333, 0.5687, 0.3922, 1, 0.6108, 0.546, 0.3695, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring7/Tile1"]
+points = PackedVector2Array(-67.7091, 45.3087, -41.8464, 9.712, 0, -3.8848, -25.8626, 31.712)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile2" type="Polygon2D" parent="Visual/Ring7"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(0, -3.8848, -41.8464, 9.712, -83.693, -3.8848, -41.8466, -17.4816)
+vertex_colors = PackedColorArray(0.6333, 0.5687, 0.3922, 1, 0.6599, 0.5956, 0.4191, 1, 0.7254, 0.6618, 0.4853, 1, 0.6988, 0.6349, 0.4584, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring7/Tile2"]
+points = PackedVector2Array(0, -3.8848, -41.8464, 9.712, -83.693, -3.8848, -41.8466, -17.4816)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile3" type="Polygon2D" parent="Visual/Ring7"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(-41.8465, -61.4815, 0, -47.8848, 0, -3.8848, -41.8465, -17.4815)
+vertex_colors = PackedColorArray(0.7618, 0.6985, 0.5221, 1, 0.6962, 0.6323, 0.4558, 1, 0.6333, 0.5687, 0.3922, 1, 0.6988, 0.6349, 0.4584, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring7/Tile3"]
+points = PackedVector2Array(-41.8465, -61.4815, 0, -47.8848, 0, -3.8848, -41.8465, -17.4815)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile4" type="Polygon2D" parent="Visual/Ring7"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(41.8465, -61.4815, 41.8465, -17.4815, 0, -3.8848, 0, -47.8848)
+vertex_colors = PackedColorArray(0.6696, 0.6054, 0.4289, 1, 0.6066, 0.5418, 0.3653, 1, 0.6333, 0.5687, 0.3922, 1, 0.6962, 0.6323, 0.4558, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring7/Tile4"]
+points = PackedVector2Array(41.8465, -61.4815, 41.8465, -17.4815, 0, -3.8848, 0, -47.8848)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile5" type="Polygon2D" parent="Visual/Ring7"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(83.693, -3.8848, 41.8465, 9.712, 0.0001, -3.8848, 41.8465, -17.4816)
+vertex_colors = PackedColorArray(0.5411, 0.4755, 0.299, 1, 0.5677, 0.5024, 0.326, 1, 0.6333, 0.5687, 0.3922, 1, 0.6066, 0.5418, 0.3653, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring7/Tile5"]
+points = PackedVector2Array(83.693, -3.8848, 41.8465, 9.712, 0.0001, -3.8848, 41.8465, -17.4816)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile6" type="Polygon2D" parent="Visual/Ring7"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(0.0001, -3.8848, 41.8465, 9.712, 67.7091, 45.3087, 25.8626, 31.712)
+vertex_colors = PackedColorArray(0.6333, 0.5687, 0.3922, 1, 0.5677, 0.5024, 0.326, 1, 0.4883, 0.4222, 0.2457, 1, 0.5538, 0.4884, 0.3119, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring7/Tile6"]
+points = PackedVector2Array(0.0001, -3.8848, 41.8465, 9.712, 67.7091, 45.3087, 25.8626, 31.712)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile7" type="Polygon2D" parent="Visual/Ring7"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(0, 67.3087, -25.8626, 31.712, 0, -3.8848, 25.8625, 31.712)
+vertex_colors = PackedColorArray(0.5314, 0.4657, 0.2892, 1, 0.6108, 0.546, 0.3695, 1, 0.6333, 0.5687, 0.3922, 1, 0.5538, 0.4884, 0.3119, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring7/Tile7"]
+points = PackedVector2Array(0, 67.3087, -25.8626, 31.712, 0, -3.8848, 25.8625, 31.712)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Icon" type="Sprite2D" parent="Visual/Ring7"]
+position = Vector2(0, -3.5)
+scale = Vector2(0.275, 0.275)
+texture = ExtResource("2")
+offset = Vector2(-3, 15)
+
+[node name="Ring5Star" type="Node2D" parent="Visual"]
+visible = false
+
+[node name="Tile1" type="Polygon2D" parent="Visual/Ring5Star"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(-41.8465, 57.5968, -41.8465, 13.5968, 0, 0, 0, 44)
+vertex_colors = PackedColorArray(0.5883, 0.5232, 0.3468, 1, 0.6513, 0.5869, 0.4104, 1, 0.6138, 0.549, 0.3725, 1, 0.5508, 0.4854, 0.3089, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring5Star/Tile1"]
+points = PackedVector2Array(-41.8465, 57.5968, -41.8465, 13.5968, 0, 0, 0, 44)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile2" type="Polygon2D" parent="Visual/Ring5Star"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(-67.709, -22, -25.8625, -35.5967, 0, 0, -41.8465, 13.5967)
+vertex_colors = PackedColorArray(0.7374, 0.6739, 0.4975, 1, 0.6999, 0.6361, 0.4596, 1, 0.6138, 0.549, 0.3725, 1, 0.6513, 0.5869, 0.4104, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring5Star/Tile2"]
+points = PackedVector2Array(-67.709, -22, -25.8625, -35.5967, 0, 0, -41.8465, 13.5967)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile3" type="Polygon2D" parent="Visual/Ring5Star"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(0, -71.1934, 25.8626, -35.5968, -0.0001, -0.0002, -25.8626, -35.5968)
+vertex_colors = PackedColorArray(0.7157, 0.652, 0.4755, 1, 0.6295, 0.5649, 0.3884, 1, 0.6138, 0.549, 0.3725, 1, 0.6999, 0.6361, 0.4596, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring5Star/Tile3"]
+points = PackedVector2Array(0, -71.1934, 25.8626, -35.5968, -0.0001, -0.0002, -25.8626, -35.5968)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile4" type="Polygon2D" parent="Visual/Ring5Star"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(67.709, -22, 41.8465, 13.5967, 0, 0, 25.8626, -35.5967)
+vertex_colors = PackedColorArray(0.5531, 0.4877, 0.3112, 1, 0.5374, 0.4718, 0.2953, 1, 0.6138, 0.549, 0.3725, 1, 0.6295, 0.5649, 0.3884, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring5Star/Tile4"]
+points = PackedVector2Array(67.709, -22, 41.8465, 13.5967, 0, 0, 25.8626, -35.5967)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile5" type="Polygon2D" parent="Visual/Ring5Star"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(41.8465, 57.5968, 0, 44, 0, 0, 41.8465, 13.5967)
+vertex_colors = PackedColorArray(0.4744, 0.4081, 0.2317, 1, 0.5508, 0.4854, 0.3089, 1, 0.6138, 0.549, 0.3725, 1, 0.5374, 0.4718, 0.2953, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring5Star/Tile5"]
+points = PackedVector2Array(41.8465, 57.5968, 0, 44, 0, 0, 41.8465, 13.5967)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Icon" type="Sprite2D" parent="Visual/Ring5Star"]
+position = Vector2(0, 0.5)
+scale = Vector2(0.275, 0.275)
+texture = ExtResource("2")
+offset = Vector2(-3, 15)
+
+[node name="Ring6" type="Node2D" parent="Visual"]
+visible = false
+
+[node name="Tile1" type="Polygon2D" parent="Visual/Ring6"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(67.7091, -14.6667, 41.8465, 20.9301, 0, 7.3333, 25.8626, -28.2634)
+vertex_colors = PackedColorArray(0.5462, 0.4806, 0.3042, 1, 0.5335, 0.4679, 0.2914, 1, 0.6088, 0.5439, 0.3674, 1, 0.6214, 0.5566, 0.3802, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring6/Tile1"]
+points = PackedVector2Array(67.7091, -14.6667, 41.8465, 20.9301, 0, 7.3333, 25.8626, -28.2634)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile2" type="Polygon2D" parent="Visual/Ring6"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(41.8465, 64.9301, 0, 51.3333, 0, 7.3333, 41.8465, 20.9301)
+vertex_colors = PackedColorArray(0.4744, 0.4081, 0.2317, 1, 0.5496, 0.4841, 0.3077, 1, 0.6088, 0.5439, 0.3674, 1, 0.5335, 0.4679, 0.2914, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring6/Tile2"]
+points = PackedVector2Array(41.8465, 64.9301, 0, 51.3333, 0, 7.3333, 41.8465, 20.9301)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile3" type="Polygon2D" parent="Visual/Ring6"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(-41.8465, 64.9301, -41.8465, 20.9301, 0, 7.3334, 0, 51.3333)
+vertex_colors = PackedColorArray(0.5883, 0.5232, 0.3468, 1, 0.6474, 0.583, 0.4065, 1, 0.6088, 0.5439, 0.3674, 1, 0.5496, 0.4841, 0.3077, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring6/Tile3"]
+points = PackedVector2Array(-41.8465, 64.9301, -41.8465, 20.9301, 0, 7.3334, 0, 51.3333)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile4" type="Polygon2D" parent="Visual/Ring6"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(-67.709, -14.6667, -25.8626, -28.2634, 0, 7.3333, -41.8465, 20.9301)
+vertex_colors = PackedColorArray(0.7305, 0.6669, 0.4904, 1, 0.6918, 0.6278, 0.4513, 1, 0.6088, 0.5439, 0.3674, 1, 0.6474, 0.583, 0.4065, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring6/Tile4"]
+points = PackedVector2Array(-67.709, -14.6667, -25.8626, -28.2634, 0, 7.3333, -41.8465, 20.9301)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile5" type="Polygon2D" parent="Visual/Ring6"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(-25.8626, -72.2634, 0, -36.6667, 0, 7.3333, -25.8626, -28.2634)
+vertex_colors = PackedColorArray(0.7509, 0.6875, 0.5111, 1, 0.6679, 0.6036, 0.4272, 1, 0.6088, 0.5439, 0.3674, 1, 0.6918, 0.6278, 0.4513, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring6/Tile5"]
+points = PackedVector2Array(-25.8626, -72.2634, 0, -36.6667, 0, 7.3333, -25.8626, -28.2634)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Tile6" type="Polygon2D" parent="Visual/Ring6"]
+color = Color(0.7, 0.6, 0.32, 1)
+polygon = PackedVector2Array(0, 7.3333, 0, -36.6667, 25.8625, -72.2634, 25.8625, -28.2634)
+vertex_colors = PackedColorArray(0.6088, 0.5439, 0.3674, 1, 0.6679, 0.6036, 0.4272, 1, 0.6805, 0.6164, 0.4399, 1, 0.6214, 0.5566, 0.3802, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Ring6/Tile6"]
+points = PackedVector2Array(0, 7.3333, 0, -36.6667, 25.8625, -72.2634, 25.8625, -28.2634)
+closed = true
+width = 2.5
+default_color = Color(0.2824, 0.2431, 0.1255, 1)
+
+[node name="Icon" type="Sprite2D" parent="Visual/Ring6"]
+position = Vector2(0, 7.5)
+scale = Vector2(0.275, 0.275)
+texture = ExtResource("2")
+offset = Vector2(-3, 15)

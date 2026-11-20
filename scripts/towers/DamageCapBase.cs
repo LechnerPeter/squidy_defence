@@ -14,7 +14,6 @@ public abstract partial class DamageCapBase : DamagingBase {
 
 	public override void reset_round_damage() {
 		DamageDealtThisRound = 0.0f;
-		QueueRedraw();
 	}
 
 	protected override void CollectPreviewData(Dictionary data) {

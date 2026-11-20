@@ -36,6 +36,18 @@ public class PenroseGrid {
 		Exit = boundary.OrderByDescending(id => Tiles[id].Center.X).First();
 	}
 
+	// A previously exported patch (see GridFile.Load) instead of a freshly
+	// generated one - the saved entry/exit are kept as-is rather than
+	// re-picked, so the board plays exactly as it did when it was saved.
+	public PenroseGrid(List<PenroseTile> tiles, int entry, int exit) {
+		Tiles = tiles;
+		Vertices = PenroseTiling.BuildAdjacency(Tiles);
+		if (OS.IsDebugBuild())
+			PenroseTiling.Validate(Tiles, Vertices);
+		Entry = entry;
+		Exit = exit;
+	}
+
 	// Recomputes EdgeNeighborIds/VertexIds/Ring from the tiles' current corner
 	// positions - needed after any interactive edit that moves tile corners
 	// or reassigns which vertex a corner belongs to (Main.RotatePenroseTripletAt),

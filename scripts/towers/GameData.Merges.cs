@@ -13,11 +13,14 @@ public static partial class GameData {
 	public static readonly string[] TripleMergePattern = { "cannon", "spikes", "cannon" };
 	public const string TripleMergeResult = "crusher";
 
+	// A triangle only ever closes around one vertex as 2 thick + 1 thin or 1 thick + 2 thin
+	// tiles (the angles can't reach 360 degrees any other way), so a recipe whose ingredients
+	// all need the same tile shape (see DamagingBase.NeedsThinTile) can never be built.
 	public static readonly Dictionary<string, Dictionary<string, int>> TriangleMergeRecipes = new Dictionary<string, Dictionary<string, int>> {
 		{ "long_range_frost", new Dictionary<string, int> { { "cannon", 2 }, { "frost", 1 } } },
-		{ "auto_cannon", new Dictionary<string, int> { { "basic", 2 }, { "cannon", 1 } } },
+		{ "auto_cannon", new Dictionary<string, int> { { "basic", 1 }, { "cannon", 1 }, { "lightning", 1 } } },
 		{ "chill_turret", new Dictionary<string, int> { { "basic", 2 }, { "frost", 1 } } },
-		{ "lightning_frost", new Dictionary<string, int> { { "lightning", 2 }, { "frost", 1 } } },
+		{ "lightning_frost", new Dictionary<string, int> { { "basic", 1 }, { "lightning", 1 }, { "frost", 1 } } },
 		{ "twin_boomerang", new Dictionary<string, int> { { "boomerang", 1 }, { "cannon", 1 }, { "frost", 1 } } },
 		{ "chain_reactor", new Dictionary<string, int> { { "cannon", 1 }, { "lightning", 1 }, { "ricochet", 1 } } },
 		{ "sniper", new Dictionary<string, int> { { "basic", 2 }, { "lightning", 1 } } },

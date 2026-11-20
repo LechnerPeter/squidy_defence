@@ -9,6 +9,8 @@ public abstract partial class ContinuousBase : DamageCapBase {
 	protected virtual float BaseSplashRadius => 0.0f;
 	protected virtual bool BaseContinuous => false;
 
+	protected override bool HasPlinth => false;
+
 	protected override void InitializeStats() {
 		base.InitializeStats();
 		SplashRadius = BaseSplashRadius;
@@ -35,7 +37,17 @@ public abstract partial class ContinuousBase : DamageCapBase {
 	public override void _Process(double delta) {
 		base._Process(delta);
 		ApplyContinuousDamage((float)delta);
-		QueueRedraw();
+		UpdateBodyColor();
+	}
+
+	private void UpdateBodyColor() {
+		bool depleted = DamageDealtThisRound >= MaxDamagePerRound;
+		if (depleted)
+			SetBodyColor(BodyColor.Darkened(0.55f));
+		else if (ActiveGlow)
+			SetBodyColor(BodyColor.Lightened(0.25f));
+		else
+			SetBodyColor(BodyColor);
 	}
 
 	private void ApplyContinuousDamage(float delta) {
@@ -67,27 +79,5 @@ public abstract partial class ContinuousBase : DamageCapBase {
 			hitAny = true;
 		}
 		ActiveGlow = hitAny;
-	}
-
-	public override void _Draw() {
-		bool depleted = DamageDealtThisRound >= MaxDamagePerRound;
-		Color bodyColor;
-		if (depleted)
-			bodyColor = TowerColor.Darkened(0.55f);
-		else if (ActiveGlow)
-			bodyColor = TowerColor.Lightened(0.25f);
-		else
-			bodyColor = TowerColor;
-		for (int i = 0; i < CellShapes.Count; i++) {
-			TileShape shape = CellShapes[i];
-			DrawTileAt(shape, bodyColor, new Color(0, 0, 0, 0.5f), 2.0f);
-			DrawCellDecoration(shape, i);
-		}
-		DrawBuffRing();
-		DrawTileBuffIcon();
-	}
-
-	protected virtual void DrawCellDecoration(TileShape shape, int index) {
-		DrawTowerIcon(shape);
 	}
 }

@@ -1,7 +1,7 @@
 using Godot;
 
 // The wiki's stand-in for a buff tile: the same diamond badge frame the tower icons
-// use (see gen_icons.py/BaseTower.DrawTowerIcon), with the buff's own glyph (see
+// use (see gen_icons.py), with the buff's own glyph (see
 // TileBuff.Draw) drawn on top - not just a flat color swatch, so it actually reads
 // as "a tile" rather than an arbitrary color chip.
 public partial class BuffTileIcon : Control {

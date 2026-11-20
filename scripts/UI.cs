@@ -28,6 +28,8 @@ public partial class UI : CanvasLayer {
 	public delegate void PenroseFlipAllStarsPressedEventHandler();
 	[Signal]
 	public delegate void PenroseRotateAllCirclesPressedEventHandler();
+	[Signal]
+	public delegate void PenroseExportGridPressedEventHandler();
 
 	private Label _goldLabel;
 	private Label _livesLabel;
@@ -49,6 +51,7 @@ public partial class UI : CanvasLayer {
 	private Button _penroseFlipAllTilesButton;
 	private Button _penroseFlipAllStarsButton;
 	private Button _penroseRotateAllCirclesButton;
+	private Button _penroseExportGridButton;
 	private ColorRect _topBarBg;
 	private ColorRect _sidebarBg;
 	private ColorRect _sidebarDivider;
@@ -266,6 +269,8 @@ public partial class UI : CanvasLayer {
 	// OnPenroseRotateAllCircles), exposed here so the effect of each move can
 	// be watched directly on the live overlay, clicked repeatedly to
 	// converge further the same way manually right/left-clicking already did.
+	// A fourth, Export Grid, changes nothing - it dumps the tiling as it
+	// currently stands to a file (see Main.OnPenroseExportGrid).
 	private void BuildPenroseDebugButtons() {
 		_penroseFlipAllTilesButton = MakePenroseDebugButton("Flip All Tiles", 88.0f);
 		_penroseFlipAllTilesButton.Pressed += () => EmitSignal(SignalName.PenroseFlipAllTilesPressed);
@@ -273,6 +278,8 @@ public partial class UI : CanvasLayer {
 		_penroseFlipAllStarsButton.Pressed += () => EmitSignal(SignalName.PenroseFlipAllStarsPressed);
 		_penroseRotateAllCirclesButton = MakePenroseDebugButton("Rotate All Circles", 168.0f);
 		_penroseRotateAllCirclesButton.Pressed += () => EmitSignal(SignalName.PenroseRotateAllCirclesPressed);
+		_penroseExportGridButton = MakePenroseDebugButton("Export Grid", 208.0f);
+		_penroseExportGridButton.Pressed += () => EmitSignal(SignalName.PenroseExportGridPressed);
 	}
 
 	private Button MakePenroseDebugButton(string text, float offsetTop) {
@@ -324,6 +331,7 @@ public partial class UI : CanvasLayer {
 		_penroseFlipAllTilesButton.Visible = enabled;
 		_penroseFlipAllStarsButton.Visible = enabled;
 		_penroseRotateAllCirclesButton.Visible = enabled;
+		_penroseExportGridButton.Visible = enabled;
 		EmitSignal(SignalName.PenroseViewToggled, enabled);
 	}
 

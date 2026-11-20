@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/towers/LightningTower.cs" id="1"]
+[ext_resource type="Texture2D" path="res://icons/towers/lightning_glyph.png" id="2"]
 
 [node name="LightningTower" type="Node2D"]
 script = ExtResource("1")
@@ -11,3 +12,23 @@ collision_mask = 2
 monitoring = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RangeArea"]
+
+[node name="Visual" type="Node2D" parent="."]
+show_behind_parent = true
+
+[node name="Thin" type="Polygon2D" parent="Visual"]
+color = Color(0.45, 0.4, 0.85, 1)
+polygon = PackedVector2Array(0, -41.8465, 13.5967, 0, 0, 41.8465, -13.5967, 0)
+vertex_colors = PackedColorArray(0.6314, 0.6, 0.8578, 1, 0.349, 0.302, 0.699, 1, 0.349, 0.302, 0.699, 1, 0.6314, 0.6, 0.8578, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Thin"]
+points = PackedVector2Array(0, -41.8465, 13.5967, 0, 0, 41.8465, -13.5967, 0)
+closed = true
+width = 2.5
+default_color = Color(0.1333, 0.098, 0.4, 1)
+
+[node name="Icon" type="Sprite2D" parent="Visual/Thin"]
+position = Vector2(0, 0)
+scale = Vector2(0.2328, 0.2328)
+texture = ExtResource("2")
+offset = Vector2(-4.5, -4.5)

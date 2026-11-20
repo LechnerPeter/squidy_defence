@@ -23,7 +23,6 @@ public partial class ChainReactorTower : RicochetTower {
 	protected override int BaseMaxBounces => 4;
 	protected override float BaseBounceRange => 100.0f;
 	protected override float BaseBounceDamageFalloff => 1.3f;
-	protected override Color BaseColor => new Color(0.85f, 0.35f, 0.55f);
 	protected override Color BaseProjectileColor => new Color(1.0f, 0.75f, 0.3f);
 	protected override string BaseFlavor => "1 Cannon + 1 Lightning + 1 Ricochet in a triangle. Each chained hit deals more damage than the last, and when the chain finally ends it detonates.";
 	protected override string BaseAbbreviation => "CHAIN";

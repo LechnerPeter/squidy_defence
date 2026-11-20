@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/towers/CannonTower.cs" id="1"]
+[ext_resource type="Texture2D" path="res://icons/towers/cannon_glyph.png" id="2"]
 
 [node name="CannonTower" type="Node2D"]
 script = ExtResource("1")
@@ -14,3 +15,23 @@ monitoring = true
 
 [node name="FireTimer" type="Timer" parent="."]
 wait_time = 1.0
+
+[node name="Visual" type="Node2D" parent="."]
+show_behind_parent = true
+
+[node name="Thick" type="Polygon2D" parent="Visual"]
+color = Color(0.85, 0.4, 0.2, 1)
+polygon = PackedVector2Array(0, -35.5967, 25.8626, 0, 0, 35.5967, -25.8626, 0)
+vertex_colors = PackedColorArray(0.8196, 0.5333, 0.4078, 1, 0.6392, 0.3373, 0.2039, 1, 0.6392, 0.3373, 0.2039, 1, 0.8196, 0.5333, 0.4078, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Thick"]
+points = PackedVector2Array(0, -35.5967, 25.8626, 0, 0, 35.5967, -25.8626, 0)
+closed = true
+width = 2.5
+default_color = Color(0.3529, 0.1529, 0.0667, 1)
+
+[node name="Icon" type="Sprite2D" parent="Visual/Thick"]
+position = Vector2(0, 0)
+scale = Vector2(0.2223, 0.2223)
+texture = ExtResource("2")
+offset = Vector2(-3, -0.5)

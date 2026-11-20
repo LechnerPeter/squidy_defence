@@ -287,10 +287,12 @@ public static class PenroseTiling {
 				members.Add(tiles[id]);
 
 			var savedCorners = new Vector2[3][];
+			var savedCenters = new Vector2[3];
 			var savedIsThin = new bool[3];
 			var savedIds = new int[3][];
 			for (int i = 0; i < 3; i++) {
 				savedCorners[i] = members[i].Corners;
+				savedCenters[i] = members[i].Center;
 				savedIsThin[i] = members[i].IsThin;
 				savedIds[i] = members[i].CornerVertexIds;
 			}
@@ -302,6 +304,7 @@ public static class PenroseTiling {
 			if (after >= before) {
 				for (int i = 0; i < 3; i++) {
 					members[i].Corners = savedCorners[i];
+					members[i].Center = savedCenters[i];
 					members[i].IsThin = savedIsThin[i];
 					members[i].CornerVertexIds = savedIds[i];
 				}

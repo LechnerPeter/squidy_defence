@@ -14,3 +14,32 @@ monitoring = true
 
 [node name="FireTimer" type="Timer" parent="."]
 wait_time = 1.0
+
+[node name="Visual" type="Node2D" parent="."]
+show_behind_parent = true
+
+[node name="Thick" type="Polygon2D" parent="Visual"]
+color = Color(0.42, 0.4, 0.38, 1)
+polygon = PackedVector2Array(0, -35.5967, 25.8626, 0, 0, 35.5967, -25.8626, 0)
+
+[node name="Outline" type="Line2D" parent="Visual/Thick"]
+points = PackedVector2Array(0, -35.5967, 25.8626, 0, 0, 35.5967, -25.8626, 0)
+closed = true
+width = 1.5
+default_color = Color(0, 0, 0, 0.35)
+
+[node name="Thin" type="Polygon2D" parent="Visual"]
+visible = false
+color = Color(0.42, 0.4, 0.38, 1)
+polygon = PackedVector2Array(0, -41.8465, 13.5967, 0, 0, 41.8465, -13.5967, 0)
+
+[node name="Outline" type="Line2D" parent="Visual/Thin"]
+points = PackedVector2Array(0, -41.8465, 13.5967, 0, 0, 41.8465, -13.5967, 0)
+closed = true
+width = 1.5
+default_color = Color(0, 0, 0, 0.35)
+
+[node name="Highlight" type="Polygon2D" parent="Visual"]
+position = Vector2(-5.544, -3.696)
+color = Color(0.536, 0.52, 0.504, 1)
+polygon = PackedVector2Array(6.16, 0, 5.8585, 1.9035, 4.9835, 3.6208, 3.6208, 4.9835, 1.9035, 5.8585, 0, 6.16, -1.9035, 5.8585, -3.6208, 4.9835, -4.9835, 3.6208, -5.8585, 1.9035, -6.16, 0, -5.8585, -1.9035, -4.9835, -3.6208, -3.6208, -4.9835, -1.9035, -5.8585, 0, -6.16, 1.9035, -5.8585, 3.6208, -4.9835, 4.9835, -3.6208, 5.8585, -1.9035)

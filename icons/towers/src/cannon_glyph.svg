@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <g opacity="0.35" transform="translate(1.6,2.4)">
+    <polygon points="32,12 41,24 36.5,34 39.5,46 32,50 24.5,46 27.5,34 23,24" fill="#14141a"/>
+  </g>
+  <g>
+    <polygon points="32,12 41,24 36.5,34 39.5,46 32,50 24.5,46 27.5,34 23,24" fill="#f4f2f0"/>
+  </g>
+</svg>

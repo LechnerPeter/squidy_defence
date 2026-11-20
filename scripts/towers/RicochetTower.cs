@@ -23,7 +23,6 @@ public partial class RicochetTower : AttackBase {
 	protected override float BaseRange => 130.0f;
 	protected override float BaseFireRate => 1.0f;
 	protected override float BaseDamage => 10.0f;
-	protected override Color BaseColor => new Color(0.3f, 0.85f, 0.55f);
 	protected override Color BaseProjectileColor => new Color(0.6f, 1.0f, 0.4f);
 	protected override float BaseProjectileSpeed => 360.0f;
 	protected override string BaseFlavor => "Its shot ricochets from enemy to enemy, weakening slightly with each bounce, but never hitting the same enemy twice.";

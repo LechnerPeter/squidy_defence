@@ -13,9 +13,8 @@ public partial class AutoCannonTower : AttackBase {
 	protected override float BaseFireRate => 1.6f;
 	protected override float BaseDamage => 16.0f;
 	protected override float BaseSplashRadius => 55.0f;
-	protected override Color BaseColor => new Color(0.9f, 0.55f, 0.15f);
 	protected override Color BaseProjectileColor => new Color(1.0f, 0.6f, 0.1f);
 	protected override float BaseProjectileSpeed => 380.0f;
-	protected override string BaseFlavor => "2 Turret + 1 Cannon in a triangle. Rapid-fire shells that still splash on impact.";
+	protected override string BaseFlavor => "1 Turret + 1 Cannon + 1 Lightning in a triangle. An electric autoloader drives rapid-fire shells that still splash on impact.";
 	protected override string BaseAbbreviation => "A-CAN";
 }

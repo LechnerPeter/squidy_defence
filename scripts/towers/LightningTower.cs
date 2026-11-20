@@ -26,7 +26,6 @@ public partial class LightningTower : TargetingBase {
 	protected override DamageType TowerDamageType => DamageType.Elemental;
 	protected virtual float BaseRampPerSecond => 0.4f;
 	protected virtual float BaseMaxRampMultiplier => 4.0f;
-	protected override Color BaseColor => new Color(0.45f, 0.4f, 0.85f);
 	protected override string BaseFlavor => "Locks onto one target and arcs a beam into it that gets stronger the longer it stays locked. Switching targets resets the ramp.";
 	protected override string BaseAbbreviation => "LTN";
 

@@ -13,7 +13,6 @@ public partial class SniperTower : AttackBase {
 	protected override int BaseCostStep => 22;
 	protected override float BaseFireRate => 0.45f;
 	protected override float BaseDamage => 70.0f;
-	protected override Color BaseColor => new Color(0.38f, 0.42f, 0.32f);
 	protected override Color BaseProjectileColor => new Color(0.85f, 0.9f, 0.75f);
 	protected override float BaseProjectileSpeed => 1100.0f;
 	protected override string BaseFlavor => "2 Turret + 1 Lightning in a triangle. No range limit at all, but it can only fire at an enemy it has a clear, unobstructed line to.";

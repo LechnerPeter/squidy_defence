@@ -14,3 +14,57 @@ monitoring = true
 
 [node name="FireTimer" type="Timer" parent="."]
 wait_time = 1.0
+
+[node name="Visual" type="Node2D" parent="."]
+show_behind_parent = true
+
+[node name="Thick" type="Polygon2D" parent="Visual"]
+color = Color(0.22, 0.42, 0.62, 1)
+polygon = PackedVector2Array(0, -35.5967, 25.8626, 0, 0, 35.5967, -25.8626, 0)
+
+[node name="Outline" type="Line2D" parent="Visual/Thick"]
+points = PackedVector2Array(0, -35.5967, 25.8626, 0, 0, 35.5967, -25.8626, 0)
+closed = true
+width = 1.5
+default_color = Color(0, 0, 0, 0.35)
+
+[node name="Ripple1" type="Line2D" parent="Visual/Thick"]
+points = PackedVector2Array(5.9743, -4.6723, 4.0881, -1.9659, 1.538, 0.1268, -1.4843, 1.4488, -4.752, 1.9008, -8.0197, 1.4488, -11.042, 0.1268, -13.5921, -1.9659, -15.4783, -4.6723)
+width = 1.5
+default_color = Color(1, 1, 1, 0.3)
+
+[node name="Ripple2" type="Line2D" parent="Visual/Thick"]
+points = PackedVector2Array(5.9743, 5.4653, 4.0881, 8.1717, 1.538, 10.2644, -1.4843, 11.5864, -4.752, 12.0384, -8.0197, 11.5864, -11.042, 10.2644, -13.5921, 8.1717, -15.4783, 5.4653)
+width = 1.5
+default_color = Color(1, 1, 1, 0.3)
+
+[node name="Ripple3" type="Line2D" parent="Visual/Thick"]
+points = PackedVector2Array(5.9743, 15.6029, 4.0881, 18.3093, 1.538, 20.402, -1.4843, 21.724, -4.752, 22.176, -8.0197, 21.724, -11.042, 20.402, -13.5921, 18.3093, -15.4783, 15.6029)
+width = 1.5
+default_color = Color(1, 1, 1, 0.3)
+
+[node name="Thin" type="Polygon2D" parent="Visual"]
+visible = false
+color = Color(0.22, 0.42, 0.62, 1)
+polygon = PackedVector2Array(0, -41.8465, 13.5967, 0, 0, 41.8465, -13.5967, 0)
+
+[node name="Outline" type="Line2D" parent="Visual/Thin"]
+points = PackedVector2Array(0, -41.8465, 13.5967, 0, 0, 41.8465, -13.5967, 0)
+closed = true
+width = 1.5
+default_color = Color(0, 0, 0, 0.35)
+
+[node name="Ripple1" type="Line2D" parent="Visual/Thin"]
+points = PackedVector2Array(3.1425, -4.6723, 2.1503, -1.9659, 0.809, 0.1268, -0.7807, 1.4488, -2.4996, 1.9008, -4.2184, 1.4488, -5.8081, 0.1268, -7.1494, -1.9659, -8.1416, -4.6723)
+width = 1.5
+default_color = Color(1, 1, 1, 0.3)
+
+[node name="Ripple2" type="Line2D" parent="Visual/Thin"]
+points = PackedVector2Array(3.1425, 5.4653, 2.1503, 8.1717, 0.809, 10.2644, -0.7807, 11.5864, -2.4996, 12.0384, -4.2184, 11.5864, -5.8081, 10.2644, -7.1494, 8.1717, -8.1416, 5.4653)
+width = 1.5
+default_color = Color(1, 1, 1, 0.3)
+
+[node name="Ripple3" type="Line2D" parent="Visual/Thin"]
+points = PackedVector2Array(3.1425, 15.6029, 2.1503, 18.3093, 0.809, 20.402, -0.7807, 21.724, -2.4996, 22.176, -4.2184, 21.724, -5.8081, 20.402, -7.1494, 18.3093, -8.1416, 15.6029)
+width = 1.5
+default_color = Color(1, 1, 1, 0.3)

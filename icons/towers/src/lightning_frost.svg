@@ -6,7 +6,6 @@
     </linearGradient>
   </defs>
   <polygon points="32.00,3.00 61.00,32.00 32.00,61.00 3.00,32.00" fill="url(#bg-lightning_frost)" stroke="#154075" stroke-width="2.5" stroke-linejoin="round"/>
-  <ellipse cx="24" cy="14" rx="20" ry="9" fill="#ffffff" opacity="0.10"/>
   <g opacity="0.35" transform="translate(1.6,2.4)">
 
     <circle cx="32" cy="32" r="22" fill="none" stroke="#14141a" stroke-width="2.5" opacity="0.5"/>
@@ -20,7 +19,7 @@
     
   </g>
   <g>
-    <polygon points="24.0,46.00 25.30,50.0 24.0,54.00 22.70,50.0" fill="#5ec2e6" stroke="#00000099" stroke-width="0.6"/>
+    <polygon points="24.0,46.00 26.91,50.0 24.0,54.00 21.09,50.0" fill="#d9a83f" stroke="#00000099" stroke-width="0.6"/>
     <polygon points="32.0,46.00 33.30,50.0 32.0,54.00 30.70,50.0" fill="#5ec2e6" stroke="#00000099" stroke-width="0.6"/>
     <polygon points="40.0,46.00 41.30,50.0 40.0,54.00 38.70,50.0" fill="#5ec2e6" stroke="#00000099" stroke-width="0.6"/>
   </g>

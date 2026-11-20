@@ -35,11 +35,13 @@ public static partial class GameData {
 		{ "sniper", GD.Load<PackedScene>("res://scenes/towers/SniperTower.tscn") },
 	};
 
+	private static readonly Dictionary<string, Godot.Collections.Dictionary> TowerDataCache = new Dictionary<string, Godot.Collections.Dictionary>();
+
 	public static readonly Dictionary<string, string> TowerT2Hints = new Dictionary<string, string> {
 		{ "long_range_frost", "(place directly, or 2 Cannon + 1 Frost)" },
-		{ "auto_cannon", "(place directly, or 2 Turret + 1 Cannon)" },
+		{ "auto_cannon", "(place directly, or 1 Turret + 1 Cannon + 1 Lightning)" },
 		{ "chill_turret", "(place directly, or 2 Turret + 1 Frost)" },
-		{ "lightning_frost", "(place directly, or 2 Lightning + 1 Frost)" },
+		{ "lightning_frost", "(place directly, or 1 Turret + 1 Lightning + 1 Frost)" },
 		{ "twin_boomerang", "(place directly, or 1 Boomerang + 1 Cannon + 1 Frost)" },
 		{ "chain_reactor", "(place directly, or 1 Cannon + 1 Lightning + 1 Ricochet)" },
 		{ "crusher", "(place directly, or Cannon-Spikes-Cannon)" },
@@ -55,12 +57,18 @@ public static partial class GameData {
 
 	public static bool IsT2(string type) => GetTier(type) == 2;
 
+	// Reading a tower's constants means instantiating its whole scene (a Big Outpost's
+	// has dozens of nodes), and Main.UpdateHover asks every frame. They never change
+	// during a run, so each type only pays for that once.
 	public static Godot.Collections.Dictionary GetTowerData(string type) {
+		if (TowerDataCache.TryGetValue(type, out Godot.Collections.Dictionary cached))
+			return cached;
 		if (!TowerScenes.TryGetValue(type, out PackedScene scene) || scene == null)
 			return new Godot.Collections.Dictionary();
 		BaseTower temp = (BaseTower)scene.Instantiate();
 		Godot.Collections.Dictionary data = temp.get_preview_data();
 		temp.Free();
+		TowerDataCache[type] = data;
 		return data;
 	}
 

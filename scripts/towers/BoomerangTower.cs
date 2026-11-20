@@ -10,7 +10,6 @@ public partial class BoomerangTower : BoomerangBase {
 	protected override int BaseCostStep => 13;
 	protected override float BaseRange => 150.0f;
 	protected override float BaseDamage => 26.0f;
-	protected override Color BaseColor => new Color(0.65f, 0.35f, 0.85f);
 	protected override Color BaseProjectileColor => new Color(0.85f, 0.55f, 1.0f);
 	protected override float BaseProjectileSpeed => 260.0f;
 	protected override bool BaseBoomerang => true;

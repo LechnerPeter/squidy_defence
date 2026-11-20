@@ -111,14 +111,28 @@ public partial class Main : Node2D {
 		_camera = GetNode<Camera2D>("Camera2D");
 
 		Engine.TimeScale = 1.0;
-		_grid = new PenroseGrid(GameData.PenroseEdgeLength, GameData.PenroseRadius);
+		SavedGrid saved = null;
+		string gridFilePath = GameManager.Instance.GridFilePath;
+		if (gridFilePath != "") {
+			saved = GridFile.Load(gridFilePath, out string loadError);
+			if (saved == null)
+				GD.PushWarning($"Couldn't load {gridFilePath} ({loadError}) - generating a new grid instead.");
+		}
+		_grid = saved != null
+			? new PenroseGrid(saved.Tiles, saved.Entry, saved.Exit)
+			: new PenroseGrid(GameData.PenroseEdgeLength, GameData.PenroseRadius);
 		if (OS.IsDebugBuild())
 			GD.Print($"Penrose grid: {_grid.Tiles.Count} tiles, {_grid.Vertices.Count} vertices.");
 		_penroseProblemTiles = ComputePenroseProblemTiles();
 		SetupCamera();
-		SpawnRocks();
-		SpawnWater();
-		SpawnBuffTiles();
+		if (saved != null) {
+			RestoreMapFeatures(saved);
+		}
+		else {
+			SpawnRocks();
+			SpawnWater();
+			SpawnBuffTiles();
+		}
 		RecomputePath();
 		GameManager.Instance.TotalWaves = GameData.Waves.Count;
 		GameManager.Instance.Reset();
@@ -132,6 +146,7 @@ public partial class Main : Node2D {
 		_ui.PenroseFlipAllTilesPressed += OnPenroseFlipAllTiles;
 		_ui.PenroseFlipAllStarsPressed += OnPenroseFlipAllStars;
 		_ui.PenroseRotateAllCirclesPressed += OnPenroseRotateAllCircles;
+		_ui.PenroseExportGridPressed += OnPenroseExportGrid;
 		RefreshTowerPrices();
 		_hoverOverlay.Draw += DrawHoverOverlay;
 	}
@@ -635,7 +650,7 @@ public partial class Main : Node2D {
 		var corners = new Vector2[tile.Corners.Length];
 		for (int i = 0; i < corners.Length; i++)
 			corners[i] = tile.Corners[i] - towerWorldPos;
-		return new TileShape { CenterOffset = tile.Center - towerWorldPos, CornerOffsets = corners };
+		return new TileShape { CenterOffset = tile.Center - towerWorldPos, CornerOffsets = corners, BodyName = tile.IsThin ? TileShape.ThinBody : TileShape.ThickBody };
 	}
 
 	private List<TileShape> TileShapesAt(List<int> tileIds, Vector2 towerWorldPos) {
@@ -646,18 +661,16 @@ public partial class Main : Node2D {
 	}
 
 	// Which Penrose rhombus shape `type` requires, if any - null for a tower with no
-	// fixed shape (utility towers, every T2/merge tower). Base (T1) attacking towers
-	// are keyed off their own damage type (see DamagingBase.TowerDamageType):
-	// Physical needs a thick tile, Elemental needs a thin one. Utility towers never
-	// populate "damage_type" at all, and every T2/merge tower always builds through
-	// a multi-cell recipe rather than sitting on one single tile, so "has a
-	// damage_type key" here is exactly "is one of the base attacking towers" - no
-	// separate type list to keep in sync.
+	// fixed shape (utility towers). Each attacking tower says for itself (see
+	// DamagingBase.NeedsThinTile). Utility towers never populate "needs_thin_tile" at
+	// all, and a T2/merge tower has it too but never gets asked, since it always builds
+	// through a multi-cell recipe rather than sitting on one single tile - so there's
+	// no separate type list to keep in sync.
 	private bool? RequiredTileIsThin(string type) {
 		Godot.Collections.Dictionary data = GameData.GetTowerData(type);
-		if (!data.ContainsKey("damage_type"))
+		if (!data.ContainsKey("needs_thin_tile"))
 			return null;
-		return data["damage_type"].AsString() == "Elemental";
+		return data["needs_thin_tile"].AsBool();
 	}
 
 	private bool TileShapeAllowed(string type, int cell) {
@@ -843,15 +856,35 @@ public partial class Main : Node2D {
 				continue;
 			if (_grid.WouldBlockPath(cell))
 				continue;
-			_grid.Place(cell);
-			_waterCells.Add(cell);
-			BaseTower water = InstantiateTower("water");
-			_towerContainer.AddChild(water);
-			water.GlobalPosition = _grid.CellToWorld(cell);
-			water.setup(_projectileContainer, GameData.PenroseEdgeLength, TileShapesAt(new List<int> { cell }, _grid.CellToWorld(cell)));
-			_structureAtCell[cell] = water;
+			PlaceWaterAt(cell);
 			placed++;
 		}
+	}
+
+	private void PlaceWaterAt(int cell) {
+		_grid.Place(cell);
+		_waterCells.Add(cell);
+		BaseTower water = InstantiateTower("water");
+		_towerContainer.AddChild(water);
+		water.GlobalPosition = _grid.CellToWorld(cell);
+		water.setup(_projectileContainer, GameData.PenroseEdgeLength, TileShapesAt(new List<int> { cell }, _grid.CellToWorld(cell)));
+		_structureAtCell[cell] = water;
+	}
+
+	// A loaded grid (see GridFile.Load) brings back the exact rocks, water and
+	// buff tiles it was exported with instead of rolling new ones, so "the same
+	// grid" means the same board, not just the same tiling. Anything the player
+	// built (towers, walls) is left out - it was only ever valid alongside the
+	// gold and waves of the run it came from.
+	private void RestoreMapFeatures(SavedGrid saved) {
+		foreach (KeyValuePair<int, string> entry in saved.Structures) {
+			if (entry.Value == "rock")
+				PlaceRockAt(entry.Key);
+			else if (entry.Value == "water")
+				PlaceWaterAt(entry.Key);
+		}
+		foreach (KeyValuePair<int, string> entry in saved.Buffs)
+			_buffTiles[entry.Key] = entry.Value;
 	}
 
 	private void SpawnBuffTiles() {
@@ -1920,4 +1953,77 @@ public partial class Main : Node2D {
 		QueueRedraw();
 		_ui.ShowStatus($"Rotated {flipped} circle(s) - {_penroseProblemTiles.Count} problem tile(s) remain.");
 	}
+
+	// "Export Grid" debug button - dumps the tiling exactly as it stands
+	// (every tile's corners in their current role order, neighbors and
+	// vertices, every vertex's ring, the current problem tiles) plus what's
+	// sitting on each tile, to a timestamped JSON file under user://, so a
+	// specific patch can be inspected outside the game after the fact, or
+	// played again from the title screen (see GridFile.Load). No
+	// RefreshAdjacency needed first: every edit path that changes Ring
+	// membership already refreshes it, and a single-tile flip only relabels
+	// corners (see FlipPenroseTileAt).
+	private void OnPenroseExportGrid() {
+		var tiles = new Godot.Collections.Array();
+		foreach (PenroseTile tile in _grid.Tiles) {
+			var corners = new Godot.Collections.Array();
+			foreach (Vector2 corner in tile.Corners)
+				corners.Add(ToJsonPoint(corner));
+			var entry = new Godot.Collections.Dictionary {
+				{ "id", tile.Id },
+				{ "thin", tile.IsThin },
+				{ "center", ToJsonPoint(tile.Center) },
+				{ "corners", corners },
+				{ "corner_vertex_ids", new Godot.Collections.Array<int>(tile.CornerVertexIds) },
+				{ "corner_color_a", new Godot.Collections.Array<bool>(tile.CornerColorA) },
+				{ "edge_neighbor_ids", new Godot.Collections.Array<int>(tile.EdgeNeighborIds) },
+				{ "vertex_ids", new Godot.Collections.Array<int>(tile.VertexIds) },
+				{ "blocked", _grid.IsBlocked(tile.Id) },
+			};
+			if (_structureAtCell.TryGetValue(tile.Id, out BaseTower structure))
+				entry["structure"] = structure.tower_type;
+			if (_towerAtCell.TryGetValue(tile.Id, out BaseTower tower))
+				entry["tower"] = tower.tower_type;
+			if (_buffTiles.TryGetValue(tile.Id, out string buff))
+				entry["buff"] = buff;
+			tiles.Add(entry);
+		}
+
+		var vertices = new Godot.Collections.Array();
+		foreach (PenroseVertex vertex in _grid.Vertices) {
+			vertices.Add(new Godot.Collections.Dictionary {
+				{ "id", vertex.Id },
+				{ "position", ToJsonPoint(vertex.Position) },
+				{ "ring", new Godot.Collections.Array<int>(vertex.Ring) },
+				{ "color_a", vertex.ColorA },
+			});
+		}
+
+		var problemTiles = new List<int>(_penroseProblemTiles);
+		problemTiles.Sort();
+		var data = new Godot.Collections.Dictionary {
+			{ "edge_length", GameData.PenroseEdgeLength },
+			{ "radius", GameData.PenroseRadius },
+			{ "entry", _grid.Entry },
+			{ "exit", _grid.Exit },
+			{ "problem_tile_ids", new Godot.Collections.Array<int>(problemTiles) },
+			{ "tiles", tiles },
+			{ "vertices", vertices },
+		};
+
+		DirAccess.MakeDirRecursiveAbsolute(GridFile.ExportDir);
+		string path = $"{GridFile.ExportDir}/grid_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+		FileAccess file = FileAccess.Open(path, FileAccess.ModeFlags.Write);
+		if (file == null) {
+			_ui.ShowStatus($"Grid export failed: {FileAccess.GetOpenError()}");
+			return;
+		}
+		file.StoreString(Json.Stringify(data, "\t", false));
+		file.Close();
+		string absolutePath = ProjectSettings.GlobalizePath(path);
+		GD.Print($"Exported grid to {absolutePath}");
+		_ui.ShowStatus($"Exported {_grid.Tiles.Count} tiles to {absolutePath}");
+	}
+
+	private static Godot.Collections.Array ToJsonPoint(Vector2 point) => new Godot.Collections.Array { point.X, point.Y };
 }

@@ -16,7 +16,6 @@ public partial class LongRangeFrostTower : AttackBase {
 	protected override DamageType TowerDamageType => DamageType.Elemental;
 	protected override float BaseSplashRadius => 40.0f;
 	protected override List<StatusEffectState> BaseOnHitStatuses => new() { new SlowStatusEffectState { Magnitude = 0.55f, RemainingDuration = 2.0f } };
-	protected override Color BaseColor => new Color(0.35f, 0.55f, 0.95f);
 	protected override Color BaseProjectileColor => new Color(0.6f, 0.95f, 1.0f);
 	protected override float BaseProjectileSpeed => 420.0f;
 	protected override string BaseFlavor => "2 Cannon + 1 Frost in a triangle. Reaches deep into the maze with a splash of chill.";

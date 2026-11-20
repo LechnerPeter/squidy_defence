@@ -19,8 +19,7 @@ public partial class LightningFrostTower : LightningTower {
 	protected virtual float BaseSlowStart => 0.15f;
 	protected virtual float BaseSlowRampPerSecond => 0.08f;
 	protected virtual float BaseMaxSlow => 0.6f;
-	protected override Color BaseColor => new Color(0.45f, 0.65f, 0.9f);
-	protected override string BaseFlavor => "2 Lightning + 1 Frost in a triangle. Its beam chills the target as it ramps up, slowing it more the longer the lock holds.";
+	protected override string BaseFlavor => "1 Turret + 1 Lightning + 1 Frost in a triangle. Its beam chills the target as it ramps up, slowing it more the longer the lock holds.";
 	protected override string BaseAbbreviation => "L-FRO";
 
 	protected override void InitializeStats() {

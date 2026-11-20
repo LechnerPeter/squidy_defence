@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/towers/TwinBoomerangTower.cs" id="1"]
+[ext_resource type="Texture2D" path="res://icons/towers/twin_boomerang_glyph.png" id="2"]
 
 [node name="TwinBoomerangTower" type="Node2D"]
 script = ExtResource("1")
@@ -14,3 +15,47 @@ monitoring = true
 
 [node name="FireTimer" type="Timer" parent="."]
 wait_time = 1.0
+
+[node name="Visual" type="Node2D" parent="."]
+show_behind_parent = true
+
+[node name="TwoThickOneThin" type="Node2D" parent="Visual"]
+
+[node name="Tile1" type="Polygon2D" parent="Visual/TwoThickOneThin"]
+color = Color(0.75, 0.35, 0.55, 1)
+polygon = PackedVector2Array(0, 38.3978, 0, -5.6022, 41.8465, -19.1989, 41.8465, 24.8011)
+vertex_colors = PackedColorArray(0.5814, 0.298, 0.4412, 1, 0.6941, 0.4338, 0.5648, 1, 0.6377, 0.3659, 0.503, 1, 0.525, 0.2302, 0.3794, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/TwoThickOneThin/Tile1"]
+points = PackedVector2Array(0, 38.3978, 0, -5.6022, 41.8465, -19.1989, 41.8465, 24.8011)
+closed = true
+width = 2.5
+default_color = Color(0.3176, 0.1216, 0.2196, 1)
+
+[node name="Tile2" type="Polygon2D" parent="Visual/TwoThickOneThin"]
+color = Color(0.75, 0.35, 0.55, 1)
+polygon = PackedVector2Array(0, 38.3978, -41.8465, 24.8011, -41.8465, -19.1989, 0, -5.6022)
+vertex_colors = PackedColorArray(0.5814, 0.298, 0.4412, 1, 0.7074, 0.4498, 0.5794, 1, 0.8201, 0.5855, 0.703, 1, 0.6941, 0.4338, 0.5648, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/TwoThickOneThin/Tile2"]
+points = PackedVector2Array(0, 38.3978, -41.8465, 24.8011, -41.8465, -19.1989, 0, -5.6022)
+closed = true
+width = 2.5
+default_color = Color(0.3176, 0.1216, 0.2196, 1)
+
+[node name="Tile3" type="Polygon2D" parent="Visual/TwoThickOneThin"]
+color = Color(0.75, 0.35, 0.55, 1)
+polygon = PackedVector2Array(-41.8465, -19.1989, 0, -32.7957, 41.8465, -19.1989, 0, -5.6022)
+vertex_colors = PackedColorArray(0.8201, 0.5855, 0.703, 1, 0.7637, 0.5176, 0.6412, 1, 0.6377, 0.3659, 0.503, 1, 0.6941, 0.4338, 0.5648, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/TwoThickOneThin/Tile3"]
+points = PackedVector2Array(-41.8465, -19.1989, 0, -32.7957, 41.8465, -19.1989, 0, -5.6022)
+closed = true
+width = 2.5
+default_color = Color(0.3176, 0.1216, 0.2196, 1)
+
+[node name="Icon" type="Sprite2D" parent="Visual/TwoThickOneThin"]
+position = Vector2(0, 2.8011)
+scale = Vector2(0.275, 0.275)
+texture = ExtResource("2")
+offset = Vector2(-10.5, -17.5)

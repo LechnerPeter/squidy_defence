@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/towers/FrostTower.cs" id="1"]
+[ext_resource type="Texture2D" path="res://icons/towers/frost_glyph.png" id="2"]
 
 [node name="FrostTower" type="Node2D"]
 script = ExtResource("1")
@@ -14,3 +15,23 @@ monitoring = true
 
 [node name="FireTimer" type="Timer" parent="."]
 wait_time = 1.0
+
+[node name="Visual" type="Node2D" parent="."]
+show_behind_parent = true
+
+[node name="Thin" type="Polygon2D" parent="Visual"]
+color = Color(0.4, 0.85, 0.9, 1)
+polygon = PackedVector2Array(0, -41.8465, 13.5967, 0, 0, 41.8465, -13.5967, 0)
+vertex_colors = PackedColorArray(0.6225, 0.8706, 0.8971, 1, 0.2833, 0.7137, 0.7618, 1, 0.2833, 0.7137, 0.7618, 1, 0.6225, 0.8706, 0.8971, 1)
+
+[node name="Outline" type="Line2D" parent="Visual/Thin"]
+points = PackedVector2Array(0, -41.8465, 13.5967, 0, 0, 41.8465, -13.5967, 0)
+closed = true
+width = 2.5
+default_color = Color(0.0745, 0.4078, 0.4471, 1)
+
+[node name="Icon" type="Sprite2D" parent="Visual/Thin"]
+position = Vector2(0, 0)
+scale = Vector2(0.2381, 0.2381)
+texture = ExtResource("2")
+offset = Vector2(-3, -4.5)

@@ -1,23 +1,22 @@
 using Godot;
 using Godot.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 // A tower's real footprint on the board: one entry per occupied tile, each with its
 // own actual corners (Penrose tiles aren't uniform the way hex cells were, so a
 // multi-cell tower's shape has to be built from real per-tile geometry rather than
 // a single formula). Offsets are local to the tower's own world position.
 public readonly struct TileShape {
+	// Names of the body nodes under a tower scene's "Visual" node, one per shape it
+	// can stand on (see BaseTower.PlaceVisual).
+	public const string ThickBody = "Thick";
+	public const string ThinBody = "Thin";
+	public const string DiamondBody = "Diamond";
+
 	public Vector2 CenterOffset { get; init; }
 	public Vector2[] CornerOffsets { get; init; }
-
-	// Uniformly scales the shape from its own center - used for the outpost platform
-	// plinth, which is drawn slightly larger than the tile it sits on.
-	public TileShape Scaled(float factor) {
-		var corners = new Vector2[CornerOffsets.Length];
-		for (int i = 0; i < corners.Length; i++)
-			corners[i] = CenterOffset + (CornerOffsets[i] - CenterOffset) * factor;
-		return new TileShape { CenterOffset = CenterOffset, CornerOffsets = corners };
-	}
+	public string BodyName { get; init; }
 
 	// A generic diamond shape for a "virtual" cell that isn't a real generated
 	// Penrose tile - namely an Outpost/Big Outpost platform, which sits at the
@@ -28,7 +27,7 @@ public readonly struct TileShape {
 		var corners = new Vector2[4];
 		for (int i = 0; i < 4; i++)
 			corners[i] = centerOffset + new Vector2(radius, 0.0f).Rotated(Mathf.DegToRad(90.0f * i - 90.0f));
-		return new TileShape { CenterOffset = centerOffset, CornerOffsets = corners };
+		return new TileShape { CenterOffset = centerOffset, CornerOffsets = corners, BodyName = DiamondBody };
 	}
 
 	// A proper thin (36/144 degree) or thick (72/108 degree) Penrose rhombus at an
@@ -47,8 +46,8 @@ public readonly struct TileShape {
 	// the acute corners vertical - and therefore the long axis vertical - for both
 	// shapes alike. Corner 0 (Top) is always the acute one, matching the badge art's
 	// own convention (see icons/towers/src/*.svg's background polygon, tips at
-	// (32,3)/(32,61)) - that's the reference direction DrawTowerIcon rotates the badge
-	// texture from, so a shape built here needs to agree with the art on which way "up" is.
+	// (32,3)/(32,61)) - that's the reference direction PlaceVisual rotates a tower's
+	// body from, so a shape built here needs to agree with the scenes on which way "up" is.
 	public static TileShape Rhombus(Vector2 centerOffset, float edgeLength, bool isThin) {
 		float acute = Mathf.DegToRad(isThin ? 36.0f : 72.0f);
 		float p = edgeLength * Mathf.Cos(acute / 2.0f);
@@ -57,7 +56,7 @@ public readonly struct TileShape {
 		Vector2 right = centerOffset + new Vector2(q, 0.0f);
 		Vector2 bottom = centerOffset + new Vector2(0.0f, p);
 		Vector2 left = centerOffset + new Vector2(-q, 0.0f);
-		return new TileShape { CenterOffset = centerOffset, CornerOffsets = new[] { top, right, bottom, left } };
+		return new TileShape { CenterOffset = centerOffset, CornerOffsets = new[] { top, right, bottom, left }, BodyName = isThin ? ThinBody : ThickBody };
 	}
 }
 
@@ -70,6 +69,12 @@ public abstract partial class BaseTower : Node2D {
 	// (via the switch below), not a stat of the outpost tower itself, and BaseTower
 	// can't depend on its own subclasses to read them.
 	private static readonly Color OutpostPlinthColor = new Color(0.65f, 0.55f, 0.3f);
+	private const float PlinthScale = 1.12f;
+
+	// How close, in world units, a scene's tile corner must land on a real one - far
+	// tighter than any difference between two tile arrangements, and far looser than
+	// the rounding in the scene files' coordinates.
+	private const float ArrangementFitTolerance = 0.5f;
 
 	private static readonly PackedScene DefaultProjectileScene = GD.Load<PackedScene>("res://scenes/projectiles/Projectile.tscn");
 
@@ -90,10 +95,13 @@ public abstract partial class BaseTower : Node2D {
 	protected List<TileShape> CellShapes = new List<TileShape> { TileShape.Generic(Vector2.Zero, 40.0f) };
 	protected bool IsBuffed = false;
 
-	protected Color TowerColor;
 	protected bool NonBlocking;
 
-	private Texture2D _towerIconTexture;
+	// The color authored on this tower's body in its scene (see PlaceVisuals).
+	protected Color BodyColor { get; private set; }
+
+	private readonly List<Polygon2D> _bodies = new List<Polygon2D>();
+	private Color _currentBodyColor;
 
 	private readonly System.Collections.Generic.Dictionary<string, StatusEffectState> _statuses = new();
 
@@ -101,10 +109,12 @@ public abstract partial class BaseTower : Node2D {
 	protected virtual string BaseTowerName => "";
 	protected virtual int BaseCost => 0;
 	protected virtual int BaseCostStep => 0;
-	protected virtual Color BaseColor => Colors.White;
 	protected virtual bool BaseNonBlocking => false;
 	protected virtual string BaseFlavor => "";
 	protected virtual string BaseAbbreviation => "";
+
+	// Whether standing on an outpost platform raises this tower on a visible plinth.
+	protected virtual bool HasPlinth => true;
 
 	// Subclasses that override _Process (BoomerangBase, ContinuousBase, LightningTower)
 	// must call base._Process(delta) so status ticking still runs for them.
@@ -113,7 +123,6 @@ public abstract partial class BaseTower : Node2D {
 	}
 
 	public void setup(Node2D projContainer, float cellSize, List<TileShape> cellShapes) {
-		TowerColor = BaseColor;
 		NonBlocking = BaseNonBlocking;
 		InitializeStats();
 
@@ -121,15 +130,161 @@ public abstract partial class BaseTower : Node2D {
 		CellSize = cellSize;
 		CellShapes = cellShapes;
 
+		PlaceVisuals();
 		ConfigureCombat();
 		QueueRedraw();
+	}
+
+	// A tower's look lives in its own scene, under a "Visual" node authored upright
+	// around the origin (see the scene files - their shapes are built for an edge
+	// length of GameData.PenroseEdgeLength). This is the only place it's ever moved or
+	// rotated: once, at placement, to fit the tile(s) the tower landed on - and only its
+	// shape turns (see RotateShape). The tower's own root stays unrotated, so range
+	// checks, projectile spawns and the buff rings in _Draw aren't affected.
+	private void PlaceVisuals() {
+		Node2D visual = GetNode<Node2D>("Visual");
+		if (CellShapes.Count > 1)
+			PlaceMergedVisual(visual);
+		else
+			PlaceVisual(visual, CellShapes[0]);
+		BodyColor = _bodies[0].Color;
+		_currentBodyColor = BodyColor;
+	}
+
+	// Rotated to match this specific tile's real orientation: a Penrose tiling is
+	// aperiodic, so two tiles of the same shape essentially never share an orientation,
+	// but a scene's visual is always authored long-axis-vertical (corner 0 pointing
+	// straight up - see TileShape.Rhombus/Generic, which both put their own corner 0
+	// there too). Rotating so corner 0 points the way THIS tile's corner 0 does lines
+	// the body up exactly with the tile.
+	private void PlaceVisual(Node2D visual, TileShape shape) {
+		foreach (string name in new[] { TileShape.ThickBody, TileShape.ThinBody, TileShape.DiamondBody }) {
+			CanvasItem candidate = visual.GetNodeOrNull<CanvasItem>(name);
+			if (candidate != null)
+				candidate.Visible = name == shape.BodyName;
+		}
+		Vector2 cornerDir = (shape.CornerOffsets[0] - shape.CenterOffset).Normalized();
+		visual.Position = shape.CenterOffset;
+		Polygon2D body = visual.GetNode<Polygon2D>(shape.BodyName);
+		RotateShape(body, Mathf.Atan2(cornerDir.Y, cornerDir.X) + Mathf.Pi / 2.0f);
+		_bodies.Add(body);
+		OnVisualPlaced(body);
+	}
+
+	// Turns a shape to fit its tile(s) while its glyph stays upright. The glyph is a
+	// child of the shape so that it stays centered on it, which only needs its own
+	// rotation undoing - the scene files size each glyph to fit inside its shape at every
+	// rotation the tiling can give it.
+	private static void RotateShape(Node2D shape, float rotation) {
+		shape.Rotation = rotation;
+		Sprite2D glyph = shape.GetNodeOrNull<Sprite2D>("Icon");
+		if (glyph != null)
+			glyph.Rotation = -rotation;
+	}
+
+	// Per-instance touch-ups to a just-placed body (see RockTower).
+	protected virtual void OnVisualPlaced(Polygon2D body) {
+	}
+
+	// A merged tower's shape is decided by its tiles, so its scene holds the real thing:
+	// one child of Visual per arrangement of tiles the tower can occupy, each drawn
+	// exactly where those tiles sit around the tower's origin (Main puts that origin at
+	// the tiles' centroid, or a Crusher's middle tile). All that's left to work out at
+	// placement is which arrangement this is and how far round it's turned.
+	private void PlaceMergedVisual(Node2D visual) {
+		Node2D placed = null;
+		foreach (Node2D arrangement in visual.GetChildren().OfType<Node2D>()) {
+			float? rotation = placed == null ? FindFitRotation(arrangement) : null;
+			arrangement.Visible = rotation != null;
+			if (rotation != null) {
+				placed = arrangement;
+				RotateShape(arrangement, rotation.Value);
+			}
+		}
+		placed ??= RebuildOverRealTiles(visual);
+		_bodies.AddRange(placed.GetChildren().OfType<Polygon2D>());
+	}
+
+	// The rotation that lands every tile of `arrangement` on one of this tower's real
+	// tiles, or null if it isn't this arrangement at all. Aims the corner farthest from
+	// the origin at each real corner in turn, since one of those must be right - any
+	// corner would do, except that some arrangements have one sitting on the origin
+	// itself, which has no direction to aim.
+	private float? FindFitRotation(Node2D arrangement) {
+		List<Vector2[]> tiles = arrangement.GetChildren().OfType<Polygon2D>().Select(tile => tile.Polygon).ToList();
+		if (tiles.Count != CellShapes.Count)
+			return null;
+		Vector2 reference = tiles[0].MaxBy(corner => corner.LengthSquared());
+		foreach (Vector2 realCorner in CellShapes.SelectMany(shape => shape.CornerOffsets)) {
+			float rotation = realCorner.Angle() - reference.Angle();
+			if (tiles.All(tile => CellShapes.Any(shape => TileLandsOn(tile, shape.CornerOffsets, rotation))))
+				return rotation;
+		}
+		return null;
+	}
+
+	private static bool TileLandsOn(Vector2[] tile, Vector2[] realCorners, float rotation) =>
+		tile.All(corner => realCorners.Any(real => real.DistanceTo(corner.Rotated(rotation)) < ArrangementFitTolerance));
+
+	// For tiles no scene arrangement matches - an open fan at the patch's rim, say, or
+	// outpost platforms rather than tiles. Re-lays the first arrangement's tile over each
+	// real one, so the tower still covers exactly what it occupies.
+	private Node2D RebuildOverRealTiles(Node2D visual) {
+		Node2D arrangement = visual.GetChild<Node2D>(0);
+		List<Polygon2D> authored = arrangement.GetChildren().OfType<Polygon2D>().ToList();
+		foreach (TileShape shape in CellShapes) {
+			var tile = (Polygon2D)authored[0].Duplicate();
+			tile.Polygon = shape.CornerOffsets;
+			tile.GetNode<Line2D>("Outline").Points = shape.CornerOffsets;
+			arrangement.AddChild(tile);
+		}
+		foreach (Polygon2D tile in authored) {
+			arrangement.RemoveChild(tile);
+			tile.QueueFree();
+		}
+		arrangement.MoveChild(arrangement.GetNode("Icon"), -1);
+		arrangement.Visible = true;
+		return arrangement;
+	}
+
+	// For a body whose color changes during play (see ContinuousBase). A tint rather
+	// than a new Polygon2D.Color, since a merged tower's tiles are shaded per vertex and
+	// vertex colors override that. Skips a repeat of the current color, since setting
+	// one always queues a redraw.
+	protected void SetBodyColor(Color color) {
+		if (color == _currentBodyColor)
+			return;
+		_currentBodyColor = color;
+		var tint = new Color(color.R / BodyColor.R, color.G / BodyColor.G, color.B / BodyColor.B);
+		foreach (Polygon2D body in _bodies)
+			body.SelfModulate = tint;
+	}
+
+	// Slightly larger than the tile it sits under, grown from that tile's own center.
+	private void AddPlinths() {
+		foreach (Polygon2D body in _bodies) {
+			Vector2[] corners = body.Polygon;
+			Vector2 center = (corners[0] + corners[1] + corners[2] + corners[3]) / 4.0f;
+			for (int i = 0; i < corners.Length; i++)
+				corners[i] = center + (corners[i] - center) * PlinthScale;
+			var plinth = new Polygon2D {
+				Polygon = corners,
+				Color = OutpostPlinthColor,
+				ShowBehindParent = true,
+			};
+			plinth.AddChild(new Line2D {
+				Points = corners,
+				Closed = true,
+				Width = 2.0f,
+				DefaultColor = new Color(0, 0, 0, 0.45f),
+			});
+			body.AddChild(plinth);
+		}
 	}
 
 	// Per-tier stat initialization hook - each tier that adds fields overrides this,
 	// calls base.InitializeStats() first, then copies its own Base* props into fields.
 	protected virtual void InitializeStats() {
-		string iconPath = $"res://icons/towers/{tower_type}.png";
-		_towerIconTexture = ResourceLoader.Exists(iconPath) ? GD.Load<Texture2D>(iconPath) : null;
 	}
 
 	// Placement-specific buffs (which platform(s) a tower sits on, which tiles it
@@ -142,6 +297,8 @@ public abstract partial class BaseTower : Node2D {
 		big_outpost_stacks = bigOutpostStacks;
 		buff_stacks = outpostStacks + bigOutpostStacks;
 		IsBuffed = buff_stacks > 0;
+		if (IsBuffed && HasPlinth)
+			AddPlinths();
 		buff_tile_types = new Array();
 		foreach (var t in tileBuffs)
 			buff_tile_types.Add(t);
@@ -298,7 +455,6 @@ public abstract partial class BaseTower : Node2D {
 			{ "name", BaseTowerName },
 			{ "cost", BaseCost },
 			{ "cost_step", BaseCostStep },
-			{ "color", BaseColor },
 			{ "non_blocking", BaseNonBlocking },
 			{ "flavor", BaseFlavor },
 			{ "abbreviation", BaseAbbreviation },
@@ -310,8 +466,8 @@ public abstract partial class BaseTower : Node2D {
 	// Per-tier dict-population hook for get_preview_data() - each tier that adds
 	// fields overrides this, calls base.CollectPreviewData(data) first, then merges
 	// in its own keys. A tower type that lacks a given concept simply never adds
-	// its key, which every consumer (GameData.DescribeStats, Main.cs, Projectile.cs,
-	// TowerIcon.cs) already treats identically to "present with a zero/false default".
+	// its key, which every consumer (GameData.DescribeStats, Main.cs, Projectile.cs)
+	// already treats identically to "present with a zero/false default".
 	protected virtual void CollectPreviewData(Dictionary data) {
 	}
 
@@ -321,7 +477,6 @@ public abstract partial class BaseTower : Node2D {
 			{ "name", BaseTowerName },
 			{ "cost", BaseCost },
 			{ "cost_step", BaseCostStep },
-			{ "color", TowerColor },
 			{ "non_blocking", NonBlocking },
 			{ "flavor", BaseFlavor },
 			{ "abbreviation", BaseAbbreviation },
@@ -333,21 +488,10 @@ public abstract partial class BaseTower : Node2D {
 	protected virtual void CollectLiveStats(Dictionary data) {
 	}
 
-	protected void DrawTileAt(TileShape shape, Color fill, Color outline, float outlineWidth) {
-		DrawColoredPolygon(shape.CornerOffsets, fill);
-		for (int i = 0; i < shape.CornerOffsets.Length; i++)
-			DrawLine(shape.CornerOffsets[i], shape.CornerOffsets[(i + 1) % shape.CornerOffsets.Length], outline, outlineWidth);
-	}
-
 	protected void DrawBuffRing() {
 		if (!IsBuffed) return;
 		foreach (TileShape shape in CellShapes)
 			DrawArc(shape.CenterOffset, CellSize * 1.15f, 0.0f, Mathf.Tau, 24, new Color(1.0f, 0.85f, 0.3f, 0.85f), 3.0f);
-	}
-
-	protected void DrawPlatformBase() {
-		foreach (TileShape shape in CellShapes)
-			DrawTileAt(shape.Scaled(1.12f), OutpostPlinthColor, new Color(0, 0, 0, 0.45f), 2.0f);
 	}
 
 	protected void DrawTileBuffIcon() {
@@ -366,57 +510,10 @@ public abstract partial class BaseTower : Node2D {
 		}
 	}
 
-	protected virtual void DrawEmblem(TileShape shape) {
-		DrawTowerIcon(shape);
-	}
-
-	// The same badge art shown in the shop, drawn on a placed tower's body (or one
-	// cell of a multi-cell tower) so it fills most of the tile. No-op for a type with
-	// no icon (Rock/Water draw their own body art directly and never call this).
-	//
-	// Rotated to match this specific tile's real orientation rather than drawn
-	// axis-aligned: a Penrose tiling is aperiodic, so two tiles of the same shape
-	// essentially never share an orientation, but the badge art (see gen_icons.py) is
-	// always authored long-axis-vertical (its own corner 0 points straight up in the
-	// unrotated texture - see TileShape.Rhombus/Generic, which both put their own
-	// corner 0 there too). Rotating the texture so corner 0 of THIS shape points the
-	// same real-world direction its corner 0 points in the art brings the two into
-	// agreement, instead of the badge reading as rotated against the tile under it.
-	//
-	// The badge art is a diamond inscribed in the icon's 64x64 canvas with
-	// circumradius 29, using the same corner formula as TileShape.Generic - scaling
-	// the draw by exactly 32/29 would land that inscribed diamond's vertex path
-	// exactly on the tower's tile edges, but the badge's own stroke extends a little
-	// past its vertex path, so an exact match still pokes out past the tile at the
-	// points. Scaling by 1.0 instead leaves a deliberate small margin.
-	protected void DrawTowerIcon(TileShape shape) {
-		if (_towerIconTexture == null)
-			return;
-		float radius = CellSize;
-		Vector2 size = new Vector2(radius, radius) * 2.0f;
-		Vector2 cornerDir = (shape.CornerOffsets[0] - shape.CenterOffset).Normalized();
-		float rotation = Mathf.Atan2(cornerDir.Y, cornerDir.X) + Mathf.Pi / 2.0f;
-		DrawSetTransform(shape.CenterOffset, rotation, Vector2.One);
-		DrawTextureRect(_towerIconTexture, new Rect2(-size / 2.0f, size), false);
-		DrawSetTransform(Vector2.Zero, 0.0f, Vector2.One);
-	}
-
+	// Only what depends on the tower's current state is still drawn in code - its
+	// body and badge are the Visual node from its scene, kept behind this (see
+	// show_behind_parent there) so rings and effects always land on top of them.
 	public override void _Draw() {
-		Color c = TowerColor;
-		if (IsBuffed)
-			DrawPlatformBase();
-		if (CellShapes.Count > 1) {
-			var pts = new Vector2[CellShapes.Count];
-			for (int i = 0; i < CellShapes.Count; i++)
-				pts[i] = CellShapes[i].CenterOffset;
-			DrawColoredPolygon(pts, c);
-		}
-		foreach (TileShape shape in CellShapes)
-			DrawTileAt(shape, c, new Color(0, 0, 0, 0.5f), 2.0f);
-		// A single cell has one real orientation to match; a fused multi-cell body
-		// (a merged T2 tower spanning 3 cells) has no single correct one to pick, so
-		// its one central badge stays upright rather than favoring any one cell.
-		DrawEmblem(CellShapes.Count == 1 ? CellShapes[0] : TileShape.Generic(Vector2.Zero, CellSize));
 		DrawBuffRing();
 		DrawTileBuffIcon();
 	}

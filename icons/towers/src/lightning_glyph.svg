@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <g opacity="0.35" transform="translate(1.6,2.4) translate(32,32) scale(0.45) translate(-32,-32)">
+
+    <polygon points="35,10 20,34 30,34 27,54 46,28 35,28" fill="#14141a"/>
+    
+  </g>
+  <g transform="translate(32,32) scale(0.45) translate(-32,-32)">
+
+    <polygon points="35,10 20,34 30,34 27,54 46,28 35,28" fill="#f4f2f0"/>
+    
+  </g>
+</svg>
