@@ -14,7 +14,7 @@ public enum TileKind {
 // the tile's own interior angle in degrees (a thick tile's corners are never
 // literally 36 or 144 degrees) - it is a separate, purely combinatorial label
 // that says which of the two matching-rule vertex classes a corner belongs
-// to, the same bipartition PenroseTiling.PenroseVertex.ColorA computes
+// to, the same bipartition BoardVertex.ColorA (see PenroseTiling) computes
 // geometrically. Concretely here it lines up with the acute/obtuse split
 // (corner 0 and 2 are ThinAngle/acute, corner 1 and 3 are ThickAngle/obtuse),
 // which is what makes the alternation hold for both tile kinds at once.

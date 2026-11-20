@@ -113,6 +113,7 @@ public partial class UI : CanvasLayer {
 		_speed4XButton.Pressed += () => SelectSpeed(4.0f);
 		SelectSpeed(1.0f);
 		_waveButton.Pressed += () => EmitSignal(SignalName.StartWavePressed);
+		_penroseViewButton.Text = $"{GameData.CurrentTiling.DisplayName()} View";
 		_penroseViewButton.Toggled += OnPenroseViewToggled;
 		BuildPenroseDebugButtons();
 		RebuildTowerShop();
@@ -270,15 +271,19 @@ public partial class UI : CanvasLayer {
 	// be watched directly on the live overlay, clicked repeatedly to
 	// converge further the same way manually right/left-clicking already did.
 	// A fourth, Export Grid, changes nothing - it dumps the tiling as it
-	// currently stands to a file (see Main.OnPenroseExportGrid).
+	// currently stands to a file (see Main.OnPenroseExportGrid). On a hat
+	// board (Einstein View) only Export Grid applies - the hat substitution
+	// system places every tile exactly, leaving nothing to repair - so it
+	// takes the first slot instead.
 	private void BuildPenroseDebugButtons() {
+		bool penrose = GameData.CurrentTiling == TilingKind.Penrose;
 		_penroseFlipAllTilesButton = MakePenroseDebugButton("Flip All Tiles", 88.0f);
 		_penroseFlipAllTilesButton.Pressed += () => EmitSignal(SignalName.PenroseFlipAllTilesPressed);
 		_penroseFlipAllStarsButton = MakePenroseDebugButton("Flip All Stars", 128.0f);
 		_penroseFlipAllStarsButton.Pressed += () => EmitSignal(SignalName.PenroseFlipAllStarsPressed);
 		_penroseRotateAllCirclesButton = MakePenroseDebugButton("Rotate All Circles", 168.0f);
 		_penroseRotateAllCirclesButton.Pressed += () => EmitSignal(SignalName.PenroseRotateAllCirclesPressed);
-		_penroseExportGridButton = MakePenroseDebugButton("Export Grid", 208.0f);
+		_penroseExportGridButton = MakePenroseDebugButton("Export Grid", penrose ? 208.0f : 88.0f);
 		_penroseExportGridButton.Pressed += () => EmitSignal(SignalName.PenroseExportGridPressed);
 	}
 
@@ -328,9 +333,10 @@ public partial class UI : CanvasLayer {
 		_towerShopScroll.Visible = chromeVisible;
 		if (enabled)
 			_statusLabel.Visible = false;
-		_penroseFlipAllTilesButton.Visible = enabled;
-		_penroseFlipAllStarsButton.Visible = enabled;
-		_penroseRotateAllCirclesButton.Visible = enabled;
+		bool repairable = enabled && GameData.CurrentTiling == TilingKind.Penrose;
+		_penroseFlipAllTilesButton.Visible = repairable;
+		_penroseFlipAllStarsButton.Visible = repairable;
+		_penroseRotateAllCirclesButton.Visible = repairable;
 		_penroseExportGridButton.Visible = enabled;
 		EmitSignal(SignalName.PenroseViewToggled, enabled);
 	}
@@ -347,7 +353,7 @@ public partial class UI : CanvasLayer {
 		Godot.Collections.Dictionary data = GameData.GetTowerData(type);
 		string name = data.ContainsKey("name") ? data["name"].AsString() : type;
 		string tooltip = $"{name} — {cost}g";
-		if (GameData.TowerT2Hints.TryGetValue(type, out string hint))
+		if (GameData.TryGetT2Hint(type, out string hint))
 			tooltip += $"\n{hint}";
 		_towerButtons[type].TooltipText = tooltip;
 		if (_towerCostLabels.ContainsKey(type))
@@ -610,7 +616,7 @@ public partial class UI : CanvasLayer {
 		foreach (string type in GameData.TowerTypeKeys) {
 			Godot.Collections.Dictionary data = GameData.GetTowerData(type);
 			TowerInfo info = GameData.DescribeStats(type, data, 0, 0, new Godot.Collections.Array(), GameData.PenroseEdgeLength);
-			if (GameData.TowerT2Hints.TryGetValue(type, out string hint))
+			if (GameData.TryGetT2Hint(type, out string hint))
 				info.Lines.Add($"Merge recipe: {hint}");
 			var icon = new TowerIcon();
 			icon.Setup(type);

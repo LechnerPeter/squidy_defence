@@ -49,6 +49,21 @@ public partial class GameManager : Node {
 	// the same board. Deliberately not touched by Reset().
 	public string GridFilePath = "";
 
+	// Which tiling the board is built from (see TilingKind) - set by TitleScreen,
+	// from the mode picked there or from the saved grid being loaded. Lives here
+	// for the same reasons as GridFilePath, and likewise isn't touched by Reset(),
+	// so Retry replays the same mode.
+	public TilingKind Tiling {
+		get => _tiling;
+		set {
+			if (value == _tiling)
+				return;
+			_tiling = value;
+			GameData.ForgetTowerData(); // some towers describe themselves differently per tiling (see BigOutpostTower)
+		}
+	}
+	private TilingKind _tiling = TilingKind.Penrose;
+
 	public override void _Ready() {
 		Instance = this;
 	}

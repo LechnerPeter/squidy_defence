@@ -14,6 +14,11 @@ public readonly struct TileShape {
 	public const string ThinBody = "Thin";
 	public const string DiamondBody = "Diamond";
 
+	// Not authored by any scene: a hat-board tile's body is built at placement from
+	// whichever body its scene does author (see BaseTower.PlaceVisual), since no
+	// rotation of a rhombus would fit a hat.
+	public const string HatBody = "Hat";
+
 	public Vector2 CenterOffset { get; init; }
 	public Vector2[] CornerOffsets { get; init; }
 	public string BodyName { get; init; }
@@ -57,6 +62,16 @@ public readonly struct TileShape {
 		Vector2 bottom = centerOffset + new Vector2(0.0f, p);
 		Vector2 left = centerOffset + new Vector2(-q, 0.0f);
 		return new TileShape { CenterOffset = centerOffset, CornerOffsets = new[] { top, right, bottom, left }, BodyName = isThin ? ThinBody : ThickBody };
+	}
+
+	// Rhombus's counterpart on a hat board: a hat at an arbitrary "virtual" position,
+	// for a tower dropped directly onto an outpost platform there - drawn the same
+	// shape as every tile around it rather than as a rhombus.
+	public static TileShape Hat(Vector2 centerOffset, float hatUnit) {
+		Vector2[] corners = HatTiling.PlatformHatCorners(hatUnit);
+		for (int i = 0; i < corners.Length; i++)
+			corners[i] += centerOffset;
+		return new TileShape { CenterOffset = centerOffset, CornerOffsets = corners, BodyName = HatBody };
 	}
 }
 
@@ -151,25 +166,87 @@ public abstract partial class BaseTower : Node2D {
 		_currentBodyColor = BodyColor;
 	}
 
+	// The bodies a scene can author under Visual, in order of preference as the base
+	// for a body no scene authors (see BuildBodyOver).
+	private static readonly string[] AuthoredBodyNames = { TileShape.ThickBody, TileShape.ThinBody, TileShape.DiamondBody };
+
 	// Rotated to match this specific tile's real orientation: a Penrose tiling is
 	// aperiodic, so two tiles of the same shape essentially never share an orientation,
 	// but a scene's visual is always authored long-axis-vertical (corner 0 pointing
 	// straight up - see TileShape.Rhombus/Generic, which both put their own corner 0
 	// there too). Rotating so corner 0 points the way THIS tile's corner 0 does lines
-	// the body up exactly with the tile.
+	// the body up exactly with the tile. A hat has no authored body to rotate, so one
+	// is built over its real corners instead (see BuildBodyOver).
 	private void PlaceVisual(Node2D visual, TileShape shape) {
-		foreach (string name in new[] { TileShape.ThickBody, TileShape.ThinBody, TileShape.DiamondBody }) {
+		Polygon2D body = visual.GetNodeOrNull<Polygon2D>(shape.BodyName);
+		Polygon2D template = body == null ? AuthoredBodyNames.Select(name => visual.GetNodeOrNull<Polygon2D>(name)).First(found => found != null) : null;
+		foreach (string name in AuthoredBodyNames) {
 			CanvasItem candidate = visual.GetNodeOrNull<CanvasItem>(name);
 			if (candidate != null)
 				candidate.Visible = name == shape.BodyName;
 		}
-		Vector2 cornerDir = (shape.CornerOffsets[0] - shape.CenterOffset).Normalized();
 		visual.Position = shape.CenterOffset;
-		Polygon2D body = visual.GetNode<Polygon2D>(shape.BodyName);
-		RotateShape(body, Mathf.Atan2(cornerDir.Y, cornerDir.X) + Mathf.Pi / 2.0f);
+		if (template == null) {
+			Vector2 cornerDir = (shape.CornerOffsets[0] - shape.CenterOffset).Normalized();
+			RotateShape(body, Mathf.Atan2(cornerDir.Y, cornerDir.X) + Mathf.Pi / 2.0f);
+		}
+		else {
+			body = BuildBodyOver(template, shape);
+			visual.AddChild(body);
+			visual.MoveChild(body, template.GetIndex()); // keeps anything drawn over the authored body (see RockTower's highlight) drawn over this one too
+		}
 		_bodies.Add(body);
 		OnVisualPlaced(body);
 	}
+
+	// A copy of an authored body reshaped over a tile shape no scene authors (a hat),
+	// unrotated, with its glyph and any decoration kept at the shape's center and
+	// scaled by how much room there is around it compared to the authored body - the
+	// scene files size each glyph to its own body. A tile's center is the roomiest
+	// point inside it (see HatTiling.Visual), so that's where the glyph has the most
+	// space.
+	private static Polygon2D BuildBodyOver(Polygon2D template, TileShape shape) {
+		var corners = new Vector2[shape.CornerOffsets.Length];
+		for (int i = 0; i < corners.Length; i++)
+			corners[i] = shape.CornerOffsets[i] - shape.CenterOffset;
+		float fit = PolygonMath.DistanceToEdges(corners, Vector2.Zero) / PolygonMath.DistanceToEdges(template.Polygon, Vector2.Zero);
+
+		var body = (Polygon2D)template.Duplicate();
+		body.Name = shape.BodyName;
+		body.Visible = true;
+		body.Polygon = corners;
+		if (body.VertexColors.Length > 0)
+			body.VertexColors = ShadeLike(template.VertexColors, corners, corners);
+		Line2D outline = body.GetNodeOrNull<Line2D>("Outline");
+		if (outline != null)
+			outline.Points = corners;
+		foreach (Node2D part in body.GetChildren().OfType<Node2D>()) {
+			if (part == outline)
+				continue;
+			part.Position *= fit;
+			part.Scale *= fit;
+		}
+		return body;
+	}
+
+	// An authored body's light-to-dark vertex shading, laid over new corners: every
+	// authored body is lit from its upper left before it's turned to fit its tile, so
+	// each corner here takes the authored lightest color in the upper left of `extent`
+	// (the whole shape being shaded - several tiles, for a merged tower) through to the
+	// darkest in the lower right.
+	private static Color[] ShadeLike(Color[] authored, Vector2[] corners, Vector2[] extent) {
+		Color light = authored.MaxBy(Luminance);
+		Color dark = authored.MinBy(Luminance);
+		float Lightness(Vector2 p) => -(p.X + p.Y);
+		float lowest = extent.Min(Lightness);
+		float highest = extent.Max(Lightness);
+		var colors = new Color[corners.Length];
+		for (int i = 0; i < corners.Length; i++)
+			colors[i] = dark.Lerp(light, highest > lowest ? (Lightness(corners[i]) - lowest) / (highest - lowest) : 0.5f);
+		return colors;
+	}
+
+	private static float Luminance(Color c) => 0.299f * c.R + 0.587f * c.G + 0.114f * c.B;
 
 	// Turns a shape to fit its tile(s) while its glyph stays upright. The glyph is a
 	// child of the shape so that it stays centered on it, which only needs its own
@@ -229,13 +306,20 @@ public abstract partial class BaseTower : Node2D {
 	// For tiles no scene arrangement matches - an open fan at the patch's rim, say, or
 	// outpost platforms rather than tiles. Re-lays the first arrangement's tile over each
 	// real one, so the tower still covers exactly what it occupies.
+	// On a hat board this is every merged tower, since every arrangement is authored in
+	// rhombi.
 	private Node2D RebuildOverRealTiles(Node2D visual) {
 		Node2D arrangement = visual.GetChild<Node2D>(0);
 		List<Polygon2D> authored = arrangement.GetChildren().OfType<Polygon2D>().ToList();
+		Vector2[] allCorners = CellShapes.SelectMany(shape => shape.CornerOffsets).ToArray();
 		foreach (TileShape shape in CellShapes) {
 			var tile = (Polygon2D)authored[0].Duplicate();
 			tile.Polygon = shape.CornerOffsets;
 			tile.GetNode<Line2D>("Outline").Points = shape.CornerOffsets;
+			// A rhombus keeps the authored tile's own 4 colors; a hat has more corners
+			// than that, so it's shaded afresh, across the whole tower at once.
+			if (tile.VertexColors.Length > 0 && tile.VertexColors.Length != shape.CornerOffsets.Length)
+				tile.VertexColors = ShadeLike(authored[0].VertexColors, shape.CornerOffsets, allCorners);
 			arrangement.AddChild(tile);
 		}
 		foreach (Polygon2D tile in authored) {
@@ -264,7 +348,7 @@ public abstract partial class BaseTower : Node2D {
 	private void AddPlinths() {
 		foreach (Polygon2D body in _bodies) {
 			Vector2[] corners = body.Polygon;
-			Vector2 center = (corners[0] + corners[1] + corners[2] + corners[3]) / 4.0f;
+			Vector2 center = PolygonMath.VertexAverage(corners);
 			for (int i = 0; i < corners.Length; i++)
 				corners[i] = center + (corners[i] - center) * PlinthScale;
 			var plinth = new Polygon2D {

@@ -42,7 +42,7 @@ public static partial class GameData {
 			lines.Add("Their shared corner opens an offset platform for one buffed tower.");
 		}
 		else if (type == "big_outpost") {
-			lines.Add("5 or more walls fused at one big junction. No attack.");
+			lines.Add($"{BigOutpostMinRingSize} or more walls fused at one big junction. No attack.");
 			lines.Add("Opens one raised platform per wall, each for one buffed tower.");
 		}
 		else if (type == "flipper") {
@@ -134,8 +134,9 @@ public static partial class GameData {
 			lines.Add($"Damage type: {damageType}");
 			// Only base (T1) towers are shape-restricted (see Main.TileShapeAllowed) -
 			// a T2 tower always builds through a multi-cell recipe instead of sitting on
-			// one single tile, so the restriction never applies to it.
-			if (GetTier(type) == 1)
+			// one single tile, so the restriction never applies to it. Nor does it on a
+			// hat board, whose tiles are all one shape.
+			if (GetTier(type) == 1 && CurrentTiling == TilingKind.Penrose)
 				lines.Add($"Buildable only on {(s.ContainsKey("needs_thin_tile") && s["needs_thin_tile"].AsBool() ? "thin" : "thick")} tiles.");
 		}
 

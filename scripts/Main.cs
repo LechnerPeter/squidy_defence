@@ -12,7 +12,9 @@ public partial class Main : Node2D {
 	private const float MaxSnapDistMultBig = 2.75f;
 	// Max unordered neighbor-pair count for a single Penrose tile (up to 4 edges ->
 	// C(4,2) = 6 possible (A,C) flanking pairs) - the cycle length for Crusher's Q/E
-	// orientation (see RotateCrusher/FindPartialLine).
+	// orientation (see RotateCrusher/FindPartialLine). A hat can have up to 6
+	// neighbors, so a hat board counts its busiest tile's real pairs instead (see
+	// _crusherOrientationSteps).
 	private const int CrusherOrientationSteps = 6;
 
 	private class Platform {
@@ -53,7 +55,7 @@ public partial class Main : Node2D {
 	private Rect2 _cameraPanBounds;
 	private bool _isPanning;
 
-	private PenroseGrid _grid;
+	private BoardGrid _grid;
 
 	// Tile ids currently failing PenroseTileRules (a mirrored tile, an
 	// invalid side-label connection, or a red/blue arc clash) - shown as a
@@ -87,6 +89,7 @@ public partial class Main : Node2D {
 	private HashSet<int> _inspectedLosIgnoreCells;
 	private string _inspectedTowerType = "";
 	private int _crusherRotation = -1;
+	private int _crusherOrientationSteps = CrusherOrientationSteps;
 	private BaseEnemy _focusedEnemy;
 
 	private int _currentWaveIndex = -1;
@@ -119,11 +122,17 @@ public partial class Main : Node2D {
 				GD.PushWarning($"Couldn't load {gridFilePath} ({loadError}) - generating a new grid instead.");
 		}
 		_grid = saved != null
-			? new PenroseGrid(saved.Tiles, saved.Entry, saved.Exit)
-			: new PenroseGrid(GameData.PenroseEdgeLength, GameData.PenroseRadius);
+			? BoardGrid.Load(saved.Tiling, saved.Tiles, saved.Entry, saved.Exit)
+			: GameManager.Instance.Tiling == TilingKind.Hat
+				? BoardGrid.GenerateHat(GameData.HatUnit, GameData.HatRadius)
+				: BoardGrid.GeneratePenrose(GameData.PenroseEdgeLength, GameData.PenroseRadius);
+		GameManager.Instance.Tiling = _grid.Tiling;
 		if (OS.IsDebugBuild())
-			GD.Print($"Penrose grid: {_grid.Tiles.Count} tiles, {_grid.Vertices.Count} vertices.");
-		_penroseProblemTiles = ComputePenroseProblemTiles();
+			GD.Print($"{_grid.Tiling} grid: {_grid.Tiles.Count} tiles, {_grid.Vertices.Count} vertices.");
+		if (_grid.Tiling == TilingKind.Penrose)
+			_penroseProblemTiles = ComputePenroseProblemTiles();
+		else
+			_crusherOrientationSteps = MostNeighborPairs();
 		SetupCamera();
 		if (saved != null) {
 			RestoreMapFeatures(saved);
@@ -161,7 +170,7 @@ public partial class Main : Node2D {
 	private void SetupCamera() {
 		float minX = float.PositiveInfinity, minY = float.PositiveInfinity;
 		float maxX = float.NegativeInfinity, maxY = float.NegativeInfinity;
-		foreach (PenroseTile tile in _grid.Tiles) {
+		foreach (BoardTile tile in _grid.Tiles) {
 			foreach (Vector2 corner in tile.Corners) {
 				minX = Mathf.Min(minX, corner.X);
 				minY = Mathf.Min(minY, corner.Y);
@@ -287,11 +296,20 @@ public partial class Main : Node2D {
 
 	private void RotateCrusher(int deltaSteps) {
 		if (_crusherRotation == -1)
-			_crusherRotation = deltaSteps > 0 ? 0 : CrusherOrientationSteps - 1;
+			_crusherRotation = deltaSteps > 0 ? 0 : _crusherOrientationSteps - 1;
 		else
-			_crusherRotation = (_crusherRotation + deltaSteps + CrusherOrientationSteps) % CrusherOrientationSteps;
+			_crusherRotation = (_crusherRotation + deltaSteps + _crusherOrientationSteps) % _crusherOrientationSteps;
 		_hoverCell = -1;
-		_ui.ShowStatus($"Crusher orientation {_crusherRotation + 1}/{CrusherOrientationSteps}");
+		_ui.ShowStatus($"Crusher orientation {_crusherRotation + 1}/{_crusherOrientationSteps}");
+	}
+
+	// The most (A,C) flanking pairs any one tile of this board has (see NeighborPairs) -
+	// a hat board's Crusher orientation cycle.
+	private int MostNeighborPairs() {
+		int most = 1;
+		foreach (BoardTile tile in _grid.Tiles)
+			most = Math.Max(most, NeighborPairs(tile).Count);
+		return most;
 	}
 
 	private void TryInspectAt(Vector2 pos) {
@@ -619,9 +637,11 @@ public partial class Main : Node2D {
 		_towerContainer.AddChild(tower);
 		tower.GlobalPosition = platform.WorldPos;
 		bool? needsThin = RequiredTileIsThin(_selectedTowerType);
-		TileShape shape = needsThin.HasValue
-			? TileShape.Rhombus(Vector2.Zero, GameData.PenroseEdgeLength, needsThin.Value)
-			: TileShape.Generic(Vector2.Zero, GameData.PenroseEdgeLength);
+		TileShape shape = _grid.Tiling == TilingKind.Hat
+			? TileShape.Hat(Vector2.Zero, GameData.HatUnit)
+			: needsThin.HasValue
+				? TileShape.Rhombus(Vector2.Zero, GameData.PenroseEdgeLength, needsThin.Value)
+				: TileShape.Generic(Vector2.Zero, GameData.PenroseEdgeLength);
 		tower.setup(_projectileContainer, GameData.PenroseEdgeLength, new List<TileShape> { shape });
 		tower.apply_buffs(outpostStacks, bigOutpostStacks, ToVariantArray(platform.Buffs));
 		platform.Occupied = true;
@@ -646,11 +666,12 @@ public partial class Main : Node2D {
 	// but not always that same tile's own center - e.g. a multi-tile merge's tower
 	// sits at the group's centroid instead).
 	private TileShape TileShapeAt(int tileId, Vector2 towerWorldPos) {
-		PenroseTile tile = _grid.Tiles[tileId];
+		BoardTile tile = _grid.Tiles[tileId];
 		var corners = new Vector2[tile.Corners.Length];
 		for (int i = 0; i < corners.Length; i++)
 			corners[i] = tile.Corners[i] - towerWorldPos;
-		return new TileShape { CenterOffset = tile.Center - towerWorldPos, CornerOffsets = corners, BodyName = tile.IsThin ? TileShape.ThinBody : TileShape.ThickBody };
+		string body = _grid.Tiling == TilingKind.Hat ? TileShape.HatBody : tile.IsThin ? TileShape.ThinBody : TileShape.ThickBody;
+		return new TileShape { CenterOffset = tile.Center - towerWorldPos, CornerOffsets = corners, BodyName = body };
 	}
 
 	private List<TileShape> TileShapesAt(List<int> tileIds, Vector2 towerWorldPos) {
@@ -665,8 +686,11 @@ public partial class Main : Node2D {
 	// DamagingBase.NeedsThinTile). Utility towers never populate "needs_thin_tile" at
 	// all, and a T2/merge tower has it too but never gets asked, since it always builds
 	// through a multi-cell recipe rather than sitting on one single tile - so there's
-	// no separate type list to keep in sync.
+	// no separate type list to keep in sync. Always null on a hat board: every hat is
+	// the same shape (some mirrored), so there's no shape to require.
 	private bool? RequiredTileIsThin(string type) {
+		if (_grid.Tiling != TilingKind.Penrose)
+			return null;
 		Godot.Collections.Dictionary data = GameData.GetTowerData(type);
 		if (!data.ContainsKey("needs_thin_tile"))
 			return null;
@@ -1117,7 +1141,7 @@ public partial class Main : Node2D {
 	// T2 triangle recipes (long_range_frost, sniper, outpost, ...) look for 3 tiles
 	// that are ALL mutually neighboring - the Penrose analog of the old "anchor + 2
 	// consecutive 60-degree neighbors" hex search, where any 3 mutually-adjacent
-	// hexes always converged on one shared corner. PenroseVertex.Ring is already
+	// hexes always converged on one shared corner. BoardVertex.Ring is already
 	// sorted into cyclic order, so 3 consecutive tiles in it are guaranteed adjacent
 	// pairwise-in-sequence (ring[i]-ring[i+1], ring[i+1]-ring[i+2]) for free - but
 	// unlike a hex vertex (always exactly 3 tiles), a Penrose vertex's ring can have
@@ -1159,7 +1183,7 @@ public partial class Main : Node2D {
 	// 3-tile line instead of occasionally closing into the same kind of tight
 	// mutual triangle the other T2 recipes now require (see FindPartialTriangle) -
 	// Crusher is specifically the shape that ISN'T that.
-	private List<(int A, int C)> NeighborPairs(PenroseTile tile) {
+	private List<(int A, int C)> NeighborPairs(BoardTile tile) {
 		var pairs = new List<(int, int)>();
 		for (int i = 0; i < tile.EdgeNeighborIds.Count; i++) {
 			for (int j = i + 1; j < tile.EdgeNeighborIds.Count; j++) {
@@ -1460,13 +1484,8 @@ public partial class Main : Node2D {
 	}
 
 	private void RecomputePath() {
-		List<int> cells = _grid.FindPath();
-		var pts = new List<Vector2> { _grid.CellToWorld(_grid.Entry) + new Vector2(-GameData.PenroseEdgeLength, 0.0f) };
-		foreach (int cell in cells)
-			pts.Add(_grid.CellToWorld(cell));
-		pts.Add(_grid.CellToWorld(_grid.Exit) + new Vector2(GameData.PenroseEdgeLength, 0.0f));
-		_currentPath = pts;
-		_pathLine.Points = pts.ToArray();
+		_currentPath = PathPoints(_grid.FindPath());
+		_pathLine.Points = _currentPath.ToArray();
 		QueueRedraw();
 		RecomputeSwimPath();
 	}
@@ -1475,12 +1494,28 @@ public partial class Main : Node2D {
 	// walkable - always at least as short as the normal path since it's a strict
 	// superset of what the normal path is allowed to cross.
 	private void RecomputeSwimPath() {
-		List<int> cells = _grid.FindPath(_waterCells);
+		_currentSwimPath = PathPoints(_grid.FindPath(_waterCells));
+	}
+
+	// A whole path's waypoints, from just off the board beside the entry to just off
+	// it beside the exit.
+	private List<Vector2> PathPoints(List<int> cells) {
 		var pts = new List<Vector2> { _grid.CellToWorld(_grid.Entry) + new Vector2(-GameData.PenroseEdgeLength, 0.0f) };
-		foreach (int cell in cells)
-			pts.Add(_grid.CellToWorld(cell));
+		AppendCellWalk(pts, cells, 0);
 		pts.Add(_grid.CellToWorld(_grid.Exit) + new Vector2(GameData.PenroseEdgeLength, 0.0f));
-		_currentSwimPath = pts;
+		return pts;
+	}
+
+	// Appends the waypoints for walking `cells` from cells[firstIndex] on: each tile's
+	// center, preceded on a hat board by the portal it's entered through from the
+	// tile before (see BoardGrid.Portal), so a step between two hats never cuts across
+	// a third. A Penrose board has no portals, so there it's just the centers.
+	private void AppendCellWalk(List<Vector2> pts, List<int> cells, int firstIndex) {
+		for (int i = firstIndex; i < cells.Count; i++) {
+			if (i > 0 && _grid.Portal(cells[i - 1], cells[i]) is Vector2 portal)
+				pts.Add(portal);
+			pts.Add(_grid.CellToWorld(cells[i]));
+		}
 	}
 
 	// Temporarily blocks the given cells, computes what the path would become, then
@@ -1502,11 +1537,7 @@ public partial class Main : Node2D {
 			_grid.Unblock(c);
 		if (cells.Count == 0)
 			return null;
-		var pts = new List<Vector2> { _grid.CellToWorld(_grid.Entry) + new Vector2(-GameData.PenroseEdgeLength, 0.0f) };
-		foreach (int c in cells)
-			pts.Add(_grid.CellToWorld(c));
-		pts.Add(_grid.CellToWorld(_grid.Exit) + new Vector2(GameData.PenroseEdgeLength, 0.0f));
-		return pts;
+		return PathPoints(cells);
 	}
 
 	private void RerouteAllEnemies() {
@@ -1517,11 +1548,10 @@ public partial class Main : Node2D {
 			List<int> cells = _grid.FindPathFrom(cell, enemy.CanSwim ? _waterCells : null);
 			if (cells.Count == 0)
 				continue;
-			var pts = new Godot.Collections.Array<Vector2> { enemy.GlobalPosition };
-			for (int i = 1; i < cells.Count; i++)
-				pts.Add(_grid.CellToWorld(cells[i]));
+			var pts = new List<Vector2> { enemy.GlobalPosition };
+			AppendCellWalk(pts, cells, 1);
 			pts.Add(_grid.CellToWorld(_grid.Exit) + new Vector2(GameData.PenroseEdgeLength, 0.0f));
-			enemy.reroute(pts);
+			enemy.reroute(new Godot.Collections.Array<Vector2>(pts));
 		}
 	}
 
@@ -1707,10 +1737,15 @@ public partial class Main : Node2D {
 
 	public override void _Draw() {
 		DrawRect(_cameraPanBounds, new Color(0.08f, 0.1f, 0.14f, 1.0f));
-		foreach (PenroseTile tile in _grid.Tiles)
-			DrawTileOutline(tile.Id, new Color(1, 1, 1, 0.08f));
-		foreach (PenroseTile tile in _grid.Tiles)
-			DrawMatchingRuleArcs(tile);
+		if (_grid.Tiling == TilingKind.Hat)
+			DrawHatColors();
+		Color outline = _grid.Tiling == TilingKind.Hat && _penroseViewOnly ? HatViewOutline : new Color(1, 1, 1, 0.08f);
+		foreach (BoardTile tile in _grid.Tiles)
+			DrawTileOutline(tile.Id, outline);
+		if (_grid.Tiling == TilingKind.Penrose) {
+			foreach (BoardTile tile in _grid.Tiles)
+				DrawMatchingRuleArcs(tile);
+		}
 		if (_penroseViewOnly) {
 			foreach (int id in _penroseProblemTiles)
 				DrawTileOutline(id, new Color(1.0f, 1.0f, 0.0f, 0.9f), 3.0f);
@@ -1832,7 +1867,7 @@ public partial class Main : Node2D {
 	// right now.
 	private void DrawLineOfSightPreview(Vector2 fromPos, HashSet<int> ignoreCells = null) {
 		Color visible = new Color(1.0f, 0.85f, 0.3f, 0.16f);
-		foreach (PenroseTile tile in _grid.Tiles) {
+		foreach (BoardTile tile in _grid.Tiles) {
 			// Water still shows as a potential target tile - it blocks walking, not
 			// seeing, and a swimming enemy can be standing right on it.
 			if (_grid.IsBlocked(tile.Id) && !_waterCells.Contains(tile.Id))
@@ -1861,7 +1896,7 @@ public partial class Main : Node2D {
 	private static readonly Color ArcRed = new Color(1.0f, 0.25f, 0.25f, 0.4f);
 	private static readonly Color ArcBlue = new Color(0.35f, 0.45f, 1.0f, 0.4f);
 
-	private void DrawMatchingRuleArcs(PenroseTile tile) {
+	private void DrawMatchingRuleArcs(BoardTile tile) {
 		foreach (ArcGeometry arc in PenroseTileRules.GetArcs(ToPenroseTileInstance(tile), GameData.PenroseEdgeLength)) {
 			float angleA = (arc.EndpointTowardPrev - arc.Center).Angle();
 			float angleB = (arc.EndpointTowardNext - arc.Center).Angle();
@@ -1871,12 +1906,39 @@ public partial class Main : Node2D {
 		}
 	}
 
-	private static PenroseTileInstance ToPenroseTileInstance(PenroseTile tile) =>
+	// A hat board's counterpart to the arcs above. A hat needs no decoration to tile
+	// aperiodically - its shape alone forces that - so what's shown instead is the
+	// structure the substitution system builds it from (see HatGenerator). In play,
+	// only the mirrored hats are picked out, faintly: about 1 in 8, and never two side
+	// by side. In the tiling view (see OnPenroseViewToggled), every hat is filled with
+	// its metatile's colour from the paper's figures - dark blue for the mirrored hat
+	// at the heart of each H metatile, light blue for the H's other three, white for T
+	// and P, grey for F.
+	private static readonly Color MirroredHatTint = new Color(0.35f, 0.45f, 1.0f, 0.12f);
+	private static readonly Color HatViewOutline = new Color(0.08f, 0.1f, 0.14f, 1.0f);
+	private static readonly Dictionary<HatLabel, Color> HatViewColors = new Dictionary<HatLabel, Color> {
+		{ HatLabel.H1, Color.Color8(0, 137, 212) },
+		{ HatLabel.H, Color.Color8(148, 205, 235) },
+		{ HatLabel.T, Color.Color8(251, 251, 251) },
+		{ HatLabel.P, Color.Color8(250, 250, 250) },
+		{ HatLabel.F, Color.Color8(191, 191, 191) },
+	};
+
+	private void DrawHatColors() {
+		foreach (BoardTile tile in _grid.Tiles) {
+			if (_penroseViewOnly)
+				DrawTile(tile.Id, HatViewColors[tile.HatLabel]);
+			else if (tile.IsMirrored)
+				DrawTile(tile.Id, MirroredHatTint);
+		}
+	}
+
+	private static PenroseTileInstance ToPenroseTileInstance(BoardTile tile) =>
 		new PenroseTileInstance { Kind = tile.IsThin ? TileKind.Thin : TileKind.Thick, Corners = tile.Corners };
 
 	private HashSet<int> ComputePenroseProblemTiles() {
 		var instances = new List<PenroseTileInstance>(_grid.Tiles.Count);
-		foreach (PenroseTile tile in _grid.Tiles)
+		foreach (BoardTile tile in _grid.Tiles)
 			instances.Add(ToPenroseTileInstance(tile));
 		return PenroseTileRules.FindProblemTiles(instances, GameData.PenroseEdgeLength);
 	}
@@ -1890,8 +1952,10 @@ public partial class Main : Node2D {
 	// tile afterward, so the effect - fixed, moved, or made worse - shows up
 	// right away rather than needing a restart.
 	private void FlipPenroseTileAt(Vector2 pos) {
+		if (_grid.Tiling != TilingKind.Penrose)
+			return;
 		int cell = _grid.WorldToCell(pos);
-		PenroseTile tile = _grid.Tiles[cell];
+		BoardTile tile = _grid.Tiles[cell];
 		tile.Corners = new[] { tile.Corners[2], tile.Corners[3], tile.Corners[0], tile.Corners[1] };
 		tile.CornerVertexIds = new[] { tile.CornerVertexIds[2], tile.CornerVertexIds[3], tile.CornerVertexIds[0], tile.CornerVertexIds[1] };
 		tile.CornerColorA = new[] { tile.CornerColorA[2], tile.CornerColorA[3], tile.CornerColorA[0], tile.CornerColorA[1] };
@@ -1906,8 +1970,10 @@ public partial class Main : Node2D {
 	// pass PenroseTiling.Generate already runs); this just finds which
 	// vertex the click landed on.
 	private void RotatePenroseTripletAt(Vector2 pos) {
+		if (_grid.Tiling != TilingKind.Penrose)
+			return;
 		int cell = _grid.WorldToCell(pos);
-		PenroseTile clicked = _grid.Tiles[cell];
+		BoardTile clicked = _grid.Tiles[cell];
 
 		foreach (int vertexId in clicked.VertexIds) {
 			if (!PenroseTiling.TryFlipCircleTriplet(_grid.Tiles, _grid.Vertices, vertexId))
@@ -1929,8 +1995,11 @@ public partial class Main : Node2D {
 	// only touches Corners/CornerVertexIds directly (see
 	// PenroseTiling.TryFlipAllSingleTiles) without patching vertex Ring
 	// membership - only relevant here because 2 of these 3 buttons read
-	// Ring composition to find their candidates.
+	// Ring composition to find their candidates. A hat board has nothing to
+	// repair, so UI only shows these on a Penrose one.
 	private void OnPenroseFlipAllTiles() {
+		if (_grid.Tiling != TilingKind.Penrose)
+			return;
 		int flipped = PenroseTiling.TryFlipAllSingleTiles(_grid.Tiles, GameData.PenroseEdgeLength);
 		_grid.RefreshAdjacency();
 		_penroseProblemTiles = ComputePenroseProblemTiles();
@@ -1939,6 +2008,8 @@ public partial class Main : Node2D {
 	}
 
 	private void OnPenroseFlipAllStars() {
+		if (_grid.Tiling != TilingKind.Penrose)
+			return;
 		int flipped = PenroseTiling.TryFlipAllStarsInsideOut(_grid.Tiles, _grid.Vertices, GameData.PenroseEdgeLength);
 		_grid.RefreshAdjacency();
 		_penroseProblemTiles = ComputePenroseProblemTiles();
@@ -1947,6 +2018,8 @@ public partial class Main : Node2D {
 	}
 
 	private void OnPenroseRotateAllCircles() {
+		if (_grid.Tiling != TilingKind.Penrose)
+			return;
 		int flipped = PenroseTiling.TryFlipAllCircleTriplets(_grid.Tiles, _grid.Vertices, GameData.PenroseEdgeLength);
 		_grid.RefreshAdjacency();
 		_penroseProblemTiles = ComputePenroseProblemTiles();
@@ -1962,24 +2035,30 @@ public partial class Main : Node2D {
 	// played again from the title screen (see GridFile.Load). No
 	// RefreshAdjacency needed first: every edit path that changes Ring
 	// membership already refreshes it, and a single-tile flip only relabels
-	// corners (see FlipPenroseTileAt).
+	// corners (see FlipPenroseTileAt). A hat board exports the same way, with
+	// each hat's mirroring and metatile in place of a rhombus's thin/thick.
 	private void OnPenroseExportGrid() {
+		bool hat = _grid.Tiling == TilingKind.Hat;
 		var tiles = new Godot.Collections.Array();
-		foreach (PenroseTile tile in _grid.Tiles) {
+		foreach (BoardTile tile in _grid.Tiles) {
 			var corners = new Godot.Collections.Array();
 			foreach (Vector2 corner in tile.Corners)
 				corners.Add(ToJsonPoint(corner));
-			var entry = new Godot.Collections.Dictionary {
-				{ "id", tile.Id },
-				{ "thin", tile.IsThin },
-				{ "center", ToJsonPoint(tile.Center) },
-				{ "corners", corners },
-				{ "corner_vertex_ids", new Godot.Collections.Array<int>(tile.CornerVertexIds) },
-				{ "corner_color_a", new Godot.Collections.Array<bool>(tile.CornerColorA) },
-				{ "edge_neighbor_ids", new Godot.Collections.Array<int>(tile.EdgeNeighborIds) },
-				{ "vertex_ids", new Godot.Collections.Array<int>(tile.VertexIds) },
-				{ "blocked", _grid.IsBlocked(tile.Id) },
-			};
+			var entry = new Godot.Collections.Dictionary { { "id", tile.Id } };
+			if (hat) {
+				entry["mirrored"] = tile.IsMirrored;
+				entry["hat_label"] = tile.HatLabel.ToString();
+			}
+			else {
+				entry["thin"] = tile.IsThin;
+			}
+			entry["center"] = ToJsonPoint(tile.Center);
+			entry["corners"] = corners;
+			entry["corner_vertex_ids"] = new Godot.Collections.Array<int>(tile.CornerVertexIds);
+			entry["corner_color_a"] = new Godot.Collections.Array<bool>(tile.CornerColorA);
+			entry["edge_neighbor_ids"] = new Godot.Collections.Array<int>(tile.EdgeNeighborIds);
+			entry["vertex_ids"] = new Godot.Collections.Array<int>(tile.VertexIds);
+			entry["blocked"] = _grid.IsBlocked(tile.Id);
 			if (_structureAtCell.TryGetValue(tile.Id, out BaseTower structure))
 				entry["structure"] = structure.tower_type;
 			if (_towerAtCell.TryGetValue(tile.Id, out BaseTower tower))
@@ -1990,7 +2069,7 @@ public partial class Main : Node2D {
 		}
 
 		var vertices = new Godot.Collections.Array();
-		foreach (PenroseVertex vertex in _grid.Vertices) {
+		foreach (BoardVertex vertex in _grid.Vertices) {
 			vertices.Add(new Godot.Collections.Dictionary {
 				{ "id", vertex.Id },
 				{ "position", ToJsonPoint(vertex.Position) },
@@ -2002,17 +2081,19 @@ public partial class Main : Node2D {
 		var problemTiles = new List<int>(_penroseProblemTiles);
 		problemTiles.Sort();
 		var data = new Godot.Collections.Dictionary {
-			{ "edge_length", GameData.PenroseEdgeLength },
-			{ "radius", GameData.PenroseRadius },
+			{ "tiling", GridFile.TilingName(_grid.Tiling) },
+			{ "edge_length", hat ? GameData.HatUnit : GameData.PenroseEdgeLength },
+			{ "radius", hat ? GameData.HatRadius : GameData.PenroseRadius },
 			{ "entry", _grid.Entry },
 			{ "exit", _grid.Exit },
-			{ "problem_tile_ids", new Godot.Collections.Array<int>(problemTiles) },
-			{ "tiles", tiles },
-			{ "vertices", vertices },
 		};
+		if (!hat)
+			data["problem_tile_ids"] = new Godot.Collections.Array<int>(problemTiles);
+		data["tiles"] = tiles;
+		data["vertices"] = vertices;
 
 		DirAccess.MakeDirRecursiveAbsolute(GridFile.ExportDir);
-		string path = $"{GridFile.ExportDir}/grid_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+		string path = GridFile.NewExportPath(_grid.Tiling);
 		FileAccess file = FileAccess.Open(path, FileAccess.ModeFlags.Write);
 		if (file == null) {
 			_ui.ShowStatus($"Grid export failed: {FileAccess.GetOpenError()}");

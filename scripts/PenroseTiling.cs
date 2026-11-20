@@ -2,49 +2,12 @@ using Godot;
 using System;
 using System.Collections.Generic;
 
-// One generated Penrose P3 rhombus tile - identified by a stable Id (its index
-// in the list PenroseTiling.Generate returns), not a lattice coordinate, since
-// Penrose tiles don't sit on a simple 2-integer grid the way hex cells do.
-public sealed class PenroseTile {
-	public int Id;
-	public bool IsThin;                                   // thin (36/144) vs thick (72/108) rhombus
-	public Vector2 Center;
-	public Vector2[] Corners;                              // 4 world-space vertices, boundary order
-	public List<int> EdgeNeighborIds = new List<int>();    // tiles sharing a full edge (fewer at the patch rim)
-	public List<int> VertexIds = new List<int>();          // which PenroseVertex ids this tile touches
-	public int[] CornerVertexIds = new int[4];             // CornerVertexIds[i] is the vertex id of Corners[i] - lets Validate() walk a specific corner's two edges precisely
-	public bool[] CornerColorA = new bool[4];              // CornerColorA[i] mirrors Corners[i]'s vertex's ColorA - see PenroseVertex.ColorA
-}
-
-// One vertex of the tiling - the "hub" a vertex-cluster merge recipe builds
-// around (see GameData.Merges / Main.cs). Unlike a hex grid, where every vertex
-// is surrounded by exactly 3 cells, a P3 vertex can have anywhere from 3 to 7
-// tiles around it depending on local configuration - Ring.Count IS the shape's
-// size now, not a fixed constant.
-public sealed class PenroseVertex {
-	public int Id;
-	public Vector2 Position;
-	public List<int> Ring = new List<int>();                // tile ids, sorted into cyclic order around this vertex
-
-	// Every Penrose vertex belongs to one of exactly two classes under the
-	// documented vertex-type bipartition ("Star-Queen-King-Ace" vs
-	// "Deuce-Jack-Sun") - equivalently, the graph connecting two vertices
-	// whenever some tile edge joins them directly is always properly
-	// 2-colorable, with no tile edge ever joining two same-colored vertices.
-	// Computed once in PenroseTiling.BuildAdjacency via BFS over the real
-	// vertex adjacency graph, then verified for contradictions in Validate() -
-	// a real, meaningful structural fact about the tiling, even though
-	// nothing currently reads it for anything beyond that diagnostic (the
-	// matching-rule arcs are governed by PenroseTileRules' fixed per-corner
-	// roles instead - see PenroseTiling.Generate).
-	public bool ColorA;
-}
-
-// Builds the gameplay-ready Penrose P3 patch. PenroseGenerator supplies the
-// raw rhombus geometry (de Bruijn's pentagrid dual method); this class
-// resolves each tile's orientation against PenroseTileRules' discrete
-// side-label matching rule, then computes the adjacency/vertex-ring data
-// every gameplay consumer (pathfinding, merge recipes, rendering) depends on.
+// Builds the gameplay-ready Penrose P3 patch, as BoardTiles (see BoardGrid.cs).
+// PenroseGenerator supplies the raw rhombus geometry (de Bruijn's pentagrid
+// dual method); this class resolves each tile's orientation against
+// PenroseTileRules' discrete side-label matching rule, then computes the
+// adjacency/vertex-ring data every gameplay consumer (pathfinding, merge
+// recipes, rendering) depends on.
 //
 // "Orientation" needs resolving because a rhombus's own two acute (or two
 // obtuse) corners are geometrically interchangeable by a pure relabeling -
@@ -62,12 +25,12 @@ public static class PenroseTiling {
 	// superset's own cut before there's a chance to decide whether to keep it.
 	private const float TripletKeepMarginEdgeLengths = 3.0f;
 
-	public static (List<PenroseTile> Tiles, List<PenroseVertex> Vertices) Generate(float edgeLength, float radius, Vector2 cutoutCenter = default) {
+	public static (List<BoardTile> Tiles, List<BoardVertex> Vertices) Generate(float edgeLength, float radius, Vector2 cutoutCenter = default) {
 		List<PenroseTileInstance> raw = CutKeepingTripletsWhole(edgeLength, radius, cutoutCenter);
-		var tiles = new List<PenroseTile>(raw.Count);
+		var tiles = new List<BoardTile>(raw.Count);
 		for (int i = 0; i < raw.Count; i++) {
 			PenroseTileInstance inst = raw[i];
-			tiles.Add(new PenroseTile {
+			tiles.Add(new BoardTile {
 				Id = i,
 				IsThin = inst.Kind == TileKind.Thin,
 				Corners = inst.Corners,
@@ -76,7 +39,7 @@ public static class PenroseTiling {
 		}
 
 		ResolveOrientations(tiles, edgeLength, out int connectionProblems, out int colorProblems);
-		List<PenroseVertex> vertices = BuildAdjacency(tiles);
+		List<BoardVertex> vertices = BuildAdjacency(tiles);
 
 		if (connectionProblems > 0 || colorProblems > 0) {
 			RepairLocalCircles(tiles, vertices, edgeLength);
@@ -87,7 +50,7 @@ public static class PenroseTiling {
 			// never see stale adjacency.
 			vertices = BuildAdjacency(tiles);
 			var finalInstances = new List<PenroseTileInstance>(tiles.Count);
-			foreach (PenroseTile tile in tiles)
+			foreach (BoardTile tile in tiles)
 				finalInstances.Add(new PenroseTileInstance { Kind = tile.IsThin ? TileKind.Thin : TileKind.Thick, Corners = tile.Corners });
 			connectionProblems = PenroseTileRules.ValidateConnections(finalInstances, logDetails: false);
 			colorProblems = PenroseTileRules.ValidateArcColors(finalInstances, edgeLength, logDetails: false);
@@ -138,17 +101,17 @@ public static class PenroseTiling {
 		float rawReach = reach + TripletKeepMarginEdgeLengths * edgeLength;
 		List<PenroseTileInstance> rawInstances = PenroseGenerator.Generate(edgeLength, rawReach, Vector2.Zero); // untranslated, centered at the true origin
 
-		var rawTiles = new List<PenroseTile>(rawInstances.Count);
+		var rawTiles = new List<BoardTile>(rawInstances.Count);
 		for (int i = 0; i < rawInstances.Count; i++) {
 			PenroseTileInstance inst = rawInstances[i];
-			rawTiles.Add(new PenroseTile {
+			rawTiles.Add(new BoardTile {
 				Id = i,
 				IsThin = inst.Kind == TileKind.Thin,
 				Corners = inst.Corners,
 				Center = (inst.Corners[0] + inst.Corners[1] + inst.Corners[2] + inst.Corners[3]) / 4.0f,
 			});
 		}
-		List<PenroseVertex> rawVertices = BuildAdjacency(rawTiles);
+		List<BoardVertex> rawVertices = BuildAdjacency(rawTiles);
 
 		var inside = new bool[rawTiles.Count];
 		for (int i = 0; i < rawTiles.Count; i++)
@@ -156,7 +119,7 @@ public static class PenroseTiling {
 
 		var keep = new bool[rawTiles.Count];
 		Array.Copy(inside, keep, inside.Length);
-		foreach (PenroseVertex vertex in rawVertices) {
+		foreach (BoardVertex vertex in rawVertices) {
 			if (vertex.Ring.Count != 3)
 				continue;
 			int thinCount = 0;
@@ -177,7 +140,7 @@ public static class PenroseTiling {
 			// non-terminating cascade described above.
 			bool genuineTriplet = true;
 			foreach (int id in vertex.Ring) {
-				PenroseTile t = rawTiles[id];
+				BoardTile t = rawTiles[id];
 				int ci = Array.IndexOf(t.CornerVertexIds, vertex.Id);
 				bool decorated = t.IsThin ? (ci == 1 || ci == 3) : (ci == 0 || ci == 2);
 				if (!decorated)
@@ -203,7 +166,7 @@ public static class PenroseTiling {
 		for (int i = 0; i < rawTiles.Count; i++) {
 			if (!keep[i])
 				continue;
-			PenroseTile t = rawTiles[i];
+			BoardTile t = rawTiles[i];
 			var corners = new Vector2[4];
 			for (int c = 0; c < 4; c++)
 				corners[c] = t.Corners[c] - cutoutCenter;
@@ -244,7 +207,7 @@ public static class PenroseTiling {
 	// net against oscillation, though none has been observed in practice).
 	private const int MaxRepairPasses = 20;
 
-	private static void RepairLocalCircles(List<PenroseTile> tiles, List<PenroseVertex> vertices, float edgeLength) {
+	private static void RepairLocalCircles(List<BoardTile> tiles, List<BoardVertex> vertices, float edgeLength) {
 		int previousTotal = TotalProblems(tiles, edgeLength);
 		for (int pass = 0; pass < MaxRepairPasses; pass++) {
 			EnsureCircleConsistency(tiles, vertices, edgeLength);
@@ -263,10 +226,10 @@ public static class PenroseTiling {
 	// button (Main.cs) - "tries every 3-tile blue circle rotation" - a single
 	// pass over every current circle candidate, kept independent per flip.
 	// Returns how many triplets were actually rotated.
-	public static int TryFlipAllCircleTriplets(List<PenroseTile> tiles, List<PenroseVertex> vertices, float edgeLength) {
+	public static int TryFlipAllCircleTriplets(List<BoardTile> tiles, List<BoardVertex> vertices, float edgeLength) {
 		int flippedCount = 0;
 		var candidateVertexIds = new List<int>();
-		foreach (PenroseVertex v in vertices) {
+		foreach (BoardVertex v in vertices) {
 			if (v.Ring.Count != 3)
 				continue;
 			int thinCount = 0;
@@ -279,10 +242,10 @@ public static class PenroseTiling {
 		}
 
 		foreach (int vertexId in candidateVertexIds) {
-			PenroseVertex vertex = vertices[vertexId];
+			BoardVertex vertex = vertices[vertexId];
 			if (vertex.Ring.Count != 3)
 				continue; // an earlier flip in this loop could have changed which tiles touch it
-			var members = new List<PenroseTile>();
+			var members = new List<BoardTile>();
 			foreach (int id in vertex.Ring)
 				members.Add(tiles[id]);
 
@@ -326,9 +289,9 @@ public static class PenroseTiling {
 	// (every tile, not just candidates), so it's exposed as an explicit
 	// manual action rather than run automatically on every generation.
 	// Returns how many tiles were kept flipped.
-	public static int TryFlipAllSingleTiles(List<PenroseTile> tiles, float edgeLength) {
+	public static int TryFlipAllSingleTiles(List<BoardTile> tiles, float edgeLength) {
 		int flippedCount = 0;
-		foreach (PenroseTile t in tiles) {
+		foreach (BoardTile t in tiles) {
 			Vector2[] savedCorners = t.Corners;
 			int[] savedIds = t.CornerVertexIds;
 			int before = TotalProblems(tiles, edgeLength);
@@ -367,12 +330,12 @@ public static class PenroseTiling {
 	// measured worse overall across real patches - flipping the whole star
 	// together, though a less "obviously correct" move, finds more real
 	// improvement in practice. Returns how many stars were flipped.
-	public static int TryFlipAllStarsInsideOut(List<PenroseTile> tiles, List<PenroseVertex> vertices, float edgeLength) {
+	public static int TryFlipAllStarsInsideOut(List<BoardTile> tiles, List<BoardVertex> vertices, float edgeLength) {
 		int flippedCount = 0;
-		foreach (PenroseVertex vertex in vertices) {
+		foreach (BoardVertex vertex in vertices) {
 			if (vertex.Ring.Count != 5)
 				continue;
-			var members = new List<PenroseTile>();
+			var members = new List<BoardTile>();
 			foreach (int id in vertex.Ring)
 				members.Add(tiles[id]);
 			if (members.Exists(t => t.IsThin))
@@ -386,7 +349,7 @@ public static class PenroseTiling {
 			}
 
 			int before = TotalProblems(tiles, edgeLength);
-			foreach (PenroseTile t in members) {
+			foreach (BoardTile t in members) {
 				Vector2[] c = t.Corners;
 				t.Corners = new[] { c[2], c[3], c[0], c[1] };
 				int[] ids = t.CornerVertexIds;
@@ -405,9 +368,9 @@ public static class PenroseTiling {
 		return flippedCount;
 	}
 
-	private static int TotalProblems(List<PenroseTile> tiles, float edgeLength) {
+	private static int TotalProblems(List<BoardTile> tiles, float edgeLength) {
 		var instances = new List<PenroseTileInstance>(tiles.Count);
-		foreach (PenroseTile t in tiles)
+		foreach (BoardTile t in tiles)
 			instances.Add(new PenroseTileInstance { Kind = t.IsThin ? TileKind.Thin : TileKind.Thick, Corners = t.Corners });
 		return PenroseTileRules.ValidateConnections(instances, logDetails: false) + PenroseTileRules.ValidateArcColors(instances, edgeLength, logDetails: false);
 	}
@@ -437,15 +400,15 @@ public static class PenroseTiling {
 	// case (never increased it), and drove red/mixed circles to zero in
 	// nearly all of them - the rare vertex where the guard still declines
 	// (forcing blue there would cost more elsewhere) is left as it was.
-	private static void EnsureCircleConsistency(List<PenroseTile> tiles, List<PenroseVertex> vertices, float edgeLength) {
-		foreach (PenroseVertex vertex in vertices) {
+	private static void EnsureCircleConsistency(List<BoardTile> tiles, List<BoardVertex> vertices, float edgeLength) {
+		foreach (BoardVertex vertex in vertices) {
 			if (vertex.Ring.Count != 3)
 				continue;
-			var members = new List<PenroseTile>();
+			var members = new List<BoardTile>();
 			foreach (int id in vertex.Ring)
 				members.Add(tiles[id]);
 			int thinCount = 0;
-			foreach (PenroseTile t in members) {
+			foreach (BoardTile t in members) {
 				if (t.IsThin)
 					thinCount++;
 			}
@@ -473,7 +436,7 @@ public static class PenroseTiling {
 			if (blueCount == 3)
 				continue; // already fully blue
 
-			var toFlip = new List<PenroseTile>();
+			var toFlip = new List<BoardTile>();
 			for (int i = 0; i < 3; i++) {
 				if (slots[i] != 0)
 					toFlip.Add(members[i]);
@@ -487,7 +450,7 @@ public static class PenroseTiling {
 			}
 
 			int before = TotalProblems(tiles, edgeLength);
-			foreach (PenroseTile t in toFlip) {
+			foreach (BoardTile t in toFlip) {
 				Vector2[] c = t.Corners;
 				t.Corners = new[] { c[2], c[3], c[0], c[1] };
 				int[] ids = t.CornerVertexIds;
@@ -525,16 +488,16 @@ public static class PenroseTiling {
 	// Returns false, changing nothing, if `vertexId` isn't a circle triplet
 	// at all (wrong ring size, wrong thin/thick count, or its 3 members
 	// don't actually agree on color).
-	public static bool TryFlipCircleTriplet(List<PenroseTile> tiles, List<PenroseVertex> vertices, int vertexId) {
-		PenroseVertex vertex = vertices[vertexId];
+	public static bool TryFlipCircleTriplet(List<BoardTile> tiles, List<BoardVertex> vertices, int vertexId) {
+		BoardVertex vertex = vertices[vertexId];
 		if (vertex.Ring.Count != 3)
 			return false;
 
-		var members = new List<PenroseTile>();
+		var members = new List<BoardTile>();
 		foreach (int id in vertex.Ring)
 			members.Add(tiles[id]);
 		int thinCount = 0;
-		foreach (PenroseTile t in members) {
+		foreach (BoardTile t in members) {
 			if (t.IsThin)
 				thinCount++;
 		}
@@ -550,7 +513,7 @@ public static class PenroseTiling {
 		int firstSlot = -1;
 		bool slotsMatch = true;
 		for (int i = 0; i < 3; i++) {
-			PenroseTile t = members[i];
+			BoardTile t = members[i];
 			int ci = Array.IndexOf(t.CornerVertexIds, vertexId);
 			int slot = t.IsThin
 				? (ci == 1 ? 0 : ci == 3 ? 1 : -1)
@@ -581,7 +544,7 @@ public static class PenroseTiling {
 		Vector2 nearSum = Vector2.Zero;
 		for (int i = 0; i < 3; i++) {
 			int ci = cornerAtVertex[i];
-			PenroseTile t = members[i];
+			BoardTile t = members[i];
 			far[i] = t.Corners[(ci + 2) % 4];
 			farId[i] = t.CornerVertexIds[(ci + 2) % 4];
 			Vector2 n1 = t.Corners[(ci + 1) % 4], n2 = t.Corners[(ci + 3) % 4];
@@ -602,7 +565,7 @@ public static class PenroseTiling {
 		// new tile's own far tip is one of the 3 original near points
 		// (matched by position - BuildTripletReplacement can't know its
 		// vertex id yet, so it marks it -1 for this to resolve).
-		var replacements = new PenroseTile[3];
+		var replacements = new BoardTile[3];
 		for (int i = 0; i < 3; i++) {
 			bool kind = members[(i + 2) % 3].IsThin;
 			replacements[i] = BuildTripletReplacement(newCenter, vertexId, far[i], farId[i], far[(i + 1) % 3], farId[(i + 1) % 3], kind, firstSlot);
@@ -637,9 +600,9 @@ public static class PenroseTiling {
 		vertex.Position = newCenter;
 		var tripletIds = new HashSet<int> { members[0].Id, members[1].Id, members[2].Id };
 		foreach ((Vector2 Pos, int Id) p in nearPoints) {
-			PenroseVertex outer = vertices[p.Id];
+			BoardVertex outer = vertices[p.Id];
 			outer.Ring.RemoveAll(id => tripletIds.Contains(id));
-			foreach (PenroseTile t in members) {
+			foreach (BoardTile t in members) {
 				if (Array.IndexOf(t.CornerVertexIds, p.Id) >= 0 && !outer.Ring.Contains(t.Id))
 					outer.Ring.Add(t.Id);
 			}
@@ -662,7 +625,7 @@ public static class PenroseTiling {
 	// isn't known until all 3 replacements' shapes are computed). Carrying
 	// vertex ids through the same reorder/relabel steps as the positions is
 	// what lets a later detection re-find this tile correctly.
-	private static PenroseTile BuildTripletReplacement(Vector2 shared, int sharedId, Vector2 n1, int n1Id, Vector2 n2, int n2Id, bool isThin, int slot) {
+	private static BoardTile BuildTripletReplacement(Vector2 shared, int sharedId, Vector2 n1, int n1Id, Vector2 n2, int n2Id, bool isThin, int slot) {
 		Vector2 far = n1 + n2 - shared;
 		Vector2[] candidate = { shared, n1, far, n2 };
 		int[] candidateIds = { sharedId, n1Id, -1, n2Id };
@@ -682,7 +645,7 @@ public static class PenroseTiling {
 			cornerVertexIds[k] = ccwIds[src];
 		}
 
-		return new PenroseTile {
+		return new BoardTile {
 			IsThin = isThin,
 			Corners = corners,
 			Center = (corners[0] + corners[1] + corners[2] + corners[3]) / 4.0f,
@@ -703,7 +666,7 @@ public static class PenroseTiling {
 	// whatever their component's arbitrary root orientation is, and the
 	// leftover damage is reported via ValidateConnections/ValidateArcColors
 	// on the final, flipped result rather than silently ignored.
-	private static void ResolveOrientations(List<PenroseTile> tiles, float edgeLength, out int connectionProblems, out int colorProblems) {
+	private static void ResolveOrientations(List<BoardTile> tiles, float edgeLength, out int connectionProblems, out int colorProblems) {
 		int n = tiles.Count;
 		TileKind KindOf(int t) => tiles[t].IsThin ? TileKind.Thin : TileKind.Thick;
 		SideLabel FlippedLabel(int t, int edgeIndex) => PenroseTileRules.SideLabels(KindOf(t))[(edgeIndex + 2) % 4];
@@ -832,7 +795,7 @@ public static class PenroseTiling {
 		}
 
 		var instances = new List<PenroseTileInstance>(n);
-		foreach (PenroseTile tile in tiles)
+		foreach (BoardTile tile in tiles)
 			instances.Add(new PenroseTileInstance { Kind = tile.IsThin ? TileKind.Thin : TileKind.Thick, Corners = tile.Corners });
 		connectionProblems = PenroseTileRules.ValidateConnections(instances, logDetails: false);
 		colorProblems = PenroseTileRules.ValidateArcColors(instances, edgeLength, logDetails: false);
@@ -843,91 +806,26 @@ public static class PenroseTiling {
 		return cmp != 0 ? cmp : a.Item2.CompareTo(b.Item2);
 	}
 
-	// Derives edge-adjacency and vertex rings purely from the already-computed
-	// corner positions (snapped into shared keys) rather than reasoning about
-	// which original grid line "owns" which edge direction - the geometry alone
-	// determines both unambiguously. This is also exactly what Validate() below
-	// checks: every edge should end up shared by precisely one neighbor (or
-	// none, at the patch rim), and every interior vertex's ring should sum to
-	// 360 degrees of tile angles.
-	public static List<PenroseVertex> BuildAdjacency(List<PenroseTile> tiles) {
-		var vertexOf = new Dictionary<Vector2I, int>();
-		var vertices = new List<PenroseVertex>();
+	// The board's edge-adjacency and vertex rings (see BoardTopology.Build - the
+	// part a hat board shares), plus this tiling's own vertex 2-coloring on top
+	// (see BoardVertex.ColorA). Validate() below checks the result: every edge
+	// should end up shared by precisely one neighbor (or none, at the patch rim),
+	// every interior vertex's ring should sum to 360 degrees of tile angles, and
+	// no tile edge should join two same-colored vertices.
+	public static List<BoardVertex> BuildAdjacency(List<BoardTile> tiles) {
+		List<BoardVertex> vertices = BoardTopology.Build(tiles);
 
-		int KeyOf(Vector2 p) {
-			var key = new Vector2I(Mathf.RoundToInt(p.X * 100.0f), Mathf.RoundToInt(p.Y * 100.0f));
-			if (!vertexOf.TryGetValue(key, out int id)) {
-				id = vertices.Count;
-				vertexOf[key] = id;
-				vertices.Add(new PenroseVertex { Id = id, Position = p });
-			}
-			return id;
-		}
-
-		// Tiles are reused across repeated calls (Generate() calls this again
-		// after RepairLocalCircles, and the interactive click handlers in
-		// Main.cs call it again after every manual flip), but EdgeNeighborIds/
-		// VertexIds only ever grew via Add - never cleared - so a second call
-		// left every previous call's ids sitting alongside the fresh ones.
-		// Since ids are just small list indices, a stale one from a superseded
-		// vertex list could coincidentally collide with an unrelated real
-		// vertex in the new list, and iterating a tile's VertexIds would then
-		// silently reach into the wrong part of the board. Clearing first
-		// makes this function idempotent no matter how many times it's called
-		// on the same tiles.
-		foreach (PenroseTile tile in tiles) {
-			tile.EdgeNeighborIds.Clear();
-			tile.VertexIds.Clear();
-		}
-
-		var edgeOwners = new Dictionary<(int, int), List<int>>();
-		foreach (PenroseTile tile in tiles) {
-			var cornerVertexIds = new int[4];
-			for (int i = 0; i < 4; i++)
-				cornerVertexIds[i] = KeyOf(tile.Corners[i]);
-			tile.CornerVertexIds = cornerVertexIds;
-			foreach (int vId in cornerVertexIds) {
-				if (!tile.VertexIds.Contains(vId))
-					tile.VertexIds.Add(vId);
-				PenroseVertex vertex = vertices[vId];
-				if (!vertex.Ring.Contains(tile.Id))
-					vertex.Ring.Add(tile.Id);
-			}
+		var edges = new HashSet<(int, int)>();
+		foreach (BoardTile tile in tiles) {
 			for (int i = 0; i < 4; i++) {
-				int a = cornerVertexIds[i];
-				int b = cornerVertexIds[(i + 1) % 4];
-				(int, int) edgeKey = a < b ? (a, b) : (b, a);
-				if (!edgeOwners.TryGetValue(edgeKey, out List<int> owners)) {
-					owners = new List<int>();
-					edgeOwners[edgeKey] = owners;
-				}
-				owners.Add(tile.Id);
+				int a = tile.CornerVertexIds[i];
+				int b = tile.CornerVertexIds[(i + 1) % 4];
+				edges.Add(a < b ? (a, b) : (b, a));
 			}
 		}
+		ColorVertices(vertices, edges);
 
-		foreach (List<int> owners in edgeOwners.Values) {
-			if (owners.Count != 2)
-				continue;
-			PenroseTile a = tiles[owners[0]];
-			PenroseTile b = tiles[owners[1]];
-			if (!a.EdgeNeighborIds.Contains(b.Id))
-				a.EdgeNeighborIds.Add(b.Id);
-			if (!b.EdgeNeighborIds.Contains(a.Id))
-				b.EdgeNeighborIds.Add(a.Id);
-		}
-
-		foreach (PenroseVertex vertex in vertices) {
-			Vector2 v = vertex.Position;
-			vertex.Ring.Sort((idA, idB) => {
-				Vector2 ca = tiles[idA].Center - v;
-				Vector2 cb = tiles[idB].Center - v;
-				return Mathf.Atan2(ca.Y, ca.X).CompareTo(Mathf.Atan2(cb.Y, cb.X));
-			});
-		}
-
-		ColorVertices(vertices, edgeOwners.Keys);
-
-		foreach (PenroseTile tile in tiles) {
+		foreach (BoardTile tile in tiles) {
 			for (int i = 0; i < 4; i++)
 				tile.CornerColorA[i] = vertices[tile.CornerVertexIds[i]].ColorA;
 		}
@@ -935,12 +833,12 @@ public static class PenroseTiling {
 		return vertices;
 	}
 
-	// 2-colors the vertex adjacency graph (see PenroseVertex.ColorA) via a
+	// 2-colors the vertex adjacency graph (see BoardVertex.ColorA) via a
 	// plain BFS per connected component - a genuine Penrose tiling's vertices
 	// always admit a proper 2-coloring here (verified independently: zero
 	// contradictions across a 350-tile patch), so any contradiction found
 	// during Validate() is a real generation defect, not an expected outcome.
-	private static void ColorVertices(List<PenroseVertex> vertices, IEnumerable<(int, int)> edges) {
+	private static void ColorVertices(List<BoardVertex> vertices, IEnumerable<(int, int)> edges) {
 		var adjacency = new Dictionary<int, List<int>>();
 		void AddAdjacency(int a, int b) {
 			if (!adjacency.TryGetValue(a, out List<int> list)) {
@@ -955,7 +853,7 @@ public static class PenroseTiling {
 		}
 
 		var colored = new bool[vertices.Count];
-		foreach (PenroseVertex start in vertices) {
+		foreach (BoardVertex start in vertices) {
 			if (colored[start.Id])
 				continue;
 			start.ColorA = true;
@@ -984,7 +882,7 @@ public static class PenroseTiling {
 	// present either its acute or its obtuse corner at a given vertex, so an
 	// assumption-based sum can never actually detect a gap or overlap (see
 	// the comment on the old version of this method, replaced below).
-	private static double CornerAngleDegrees(PenroseTile tile, int cornerIndex) {
+	private static double CornerAngleDegrees(BoardTile tile, int cornerIndex) {
 		Vector2 c = tile.Corners[cornerIndex];
 		Vector2 prev = tile.Corners[(cornerIndex + 3) % 4];
 		Vector2 next = tile.Corners[(cornerIndex + 1) % 4];
@@ -1012,7 +910,7 @@ public static class PenroseTiling {
 	// Returns the number of problems found (0 = clean); logs each one via
 	// GD.PushWarning rather than throwing, since this is a startup diagnostic,
 	// not a runtime guard.
-	public static int Validate(List<PenroseTile> tiles, List<PenroseVertex> vertices) {
+	public static int Validate(List<BoardTile> tiles, List<BoardVertex> vertices) {
 		int problems = 0;
 
 		// Edge ownership keyed by the pair of vertex ids it connects - the
@@ -1020,7 +918,7 @@ public static class PenroseTiling {
 		// here so a specific edge (not just "some pair of tiles that happen to
 		// be neighbors somewhere") can be checked at each vertex.
 		var edgeOwners = new Dictionary<(int, int), int>();
-		foreach (PenroseTile tile in tiles) {
+		foreach (BoardTile tile in tiles) {
 			for (int i = 0; i < 4; i++) {
 				int a = tile.CornerVertexIds[i];
 				int b = tile.CornerVertexIds[(i + 1) % 4];
@@ -1035,7 +933,7 @@ public static class PenroseTiling {
 				GD.PushWarning($"PenroseTiling.Validate: edge between vertices {entry.Key.Item1}/{entry.Key.Item2} is shared by {entry.Value} tiles (expected at most 2) - tiles overlap.");
 			}
 			// A tile edge should never join two same-colored vertices - see
-			// PenroseVertex.ColorA. A contradiction here means the tiling
+			// BoardVertex.ColorA. A contradiction here means the tiling
 			// doesn't actually admit the real Penrose vertex bipartition, a
 			// deeper defect than mere geometric gaps/overlaps.
 			if (vertices[entry.Key.Item1].ColorA == vertices[entry.Key.Item2].ColorA) {
@@ -1044,11 +942,11 @@ public static class PenroseTiling {
 			}
 		}
 
-		foreach (PenroseVertex vertex in vertices) {
+		foreach (BoardVertex vertex in vertices) {
 			bool closed = true;
 			double sum = 0.0;
 			foreach (int tileId in vertex.Ring) {
-				PenroseTile tile = tiles[tileId];
+				BoardTile tile = tiles[tileId];
 				int ci = Array.IndexOf(tile.CornerVertexIds, vertex.Id);
 				if (ci < 0) {
 					problems++;

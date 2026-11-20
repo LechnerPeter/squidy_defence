@@ -37,7 +37,8 @@ public static partial class GameData {
 
 	private static readonly Dictionary<string, Godot.Collections.Dictionary> TowerDataCache = new Dictionary<string, Godot.Collections.Dictionary>();
 
-	public static readonly Dictionary<string, string> TowerT2Hints = new Dictionary<string, string> {
+	// {0} is the run's BigOutpostMinRingSize, which depends on the tiling.
+	private static readonly Dictionary<string, string> TowerT2Hints = new Dictionary<string, string> {
 		{ "long_range_frost", "(place directly, or 2 Cannon + 1 Frost)" },
 		{ "auto_cannon", "(place directly, or 1 Turret + 1 Cannon + 1 Lightning)" },
 		{ "chill_turret", "(place directly, or 2 Turret + 1 Frost)" },
@@ -46,9 +47,14 @@ public static partial class GameData {
 		{ "chain_reactor", "(place directly, or 1 Cannon + 1 Lightning + 1 Ricochet)" },
 		{ "crusher", "(place directly, or Cannon-Spikes-Cannon)" },
 		{ "outpost", "(place directly, or 3 Walls in a triangle)" },
-		{ "big_outpost", "(place directly, or 5+ Walls meeting at one junction)" },
+		{ "big_outpost", "(place directly, or {0}+ Walls meeting at one junction)" },
 		{ "sniper", "(place directly, or 2 Turret + 1 Lightning)" },
 	};
+
+	public static bool TryGetT2Hint(string type, out string hint) {
+		hint = TowerT2Hints.TryGetValue(type, out string template) ? string.Format(template, BigOutpostMinRingSize) : null;
+		return hint != null;
+	}
 
 	public static int GetTier(string type) {
 		Godot.Collections.Dictionary data = GetTowerData(type);
@@ -71,6 +77,10 @@ public static partial class GameData {
 		TowerDataCache[type] = data;
 		return data;
 	}
+
+	// Called when the run's tiling changes (see GameManager.Tiling), since a tower's
+	// description can depend on it.
+	public static void ForgetTowerData() => TowerDataCache.Clear();
 
 	private static string GetTowerFlavor(string type) {
 		Godot.Collections.Dictionary data = GetTowerData(type);

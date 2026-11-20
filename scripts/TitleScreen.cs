@@ -3,11 +3,12 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 
-// First screen on launch: start on a freshly generated grid, or pick one of
-// the grids saved by Main's "Export Grid" button (see GridFile). The choice
-// reaches Main through GameManager.GridFilePath. A saved grid is test-loaded
-// here first, so a broken or outdated file shows why it can't be used instead
-// of quietly falling back to a generated grid once the game starts.
+// First screen on launch: start on a freshly generated grid of either tiling
+// (see TilingKind), or pick one of the grids saved by Main's "Export Grid" button
+// (see GridFile). The choice reaches Main through GameManager.GridFilePath and
+// GameManager.Tiling. A saved grid is test-loaded here first, so a broken or
+// outdated file shows why it can't be used instead of quietly falling back to a
+// generated grid once the game starts.
 public partial class TitleScreen : Control {
 	private const string MainScenePath = "res://scenes/Main.tscn";
 
@@ -36,13 +37,8 @@ public partial class TitleScreen : Control {
 		titleLabel.AddThemeFontSizeOverride("font_size", 40);
 		box.AddChild(titleLabel);
 
-		var newButton = new Button {
-			Text = "Generate New Grid",
-			CustomMinimumSize = new Vector2(0, 40),
-		};
-		newButton.AddThemeFontSizeOverride("font_size", 16);
-		newButton.Pressed += () => StartGame("");
-		box.AddChild(newButton);
+		AddModeButton(box, TilingKind.Penrose, "Two tiles, thin and thick rhombi - each tower needs the right one.");
+		AddModeButton(box, TilingKind.Hat, "One tile, the aperiodic \"hat\" - any tower fits anywhere.");
 
 		box.AddChild(new HSeparator());
 
@@ -74,7 +70,28 @@ public partial class TitleScreen : Control {
 			_savedList.AddItem(DisplayName(path));
 		}
 		if (_savedPaths.Count == 0)
-			_messageLabel.Text = "No saved grids yet - in a game, turn on Penrose View and click Export Grid.";
+			_messageLabel.Text = "No saved grids yet - in a game, turn on Penrose View (Einstein View on a hat grid) and click Export Grid.";
+	}
+
+	// A button that starts a freshly generated grid of this tiling, with a line under
+	// it saying what sets the tiling apart.
+	private void AddModeButton(VBoxContainer box, TilingKind tiling, string blurb) {
+		var button = new Button {
+			Text = $"New {tiling.DisplayName()} Grid",
+			CustomMinimumSize = new Vector2(0, 40),
+		};
+		button.AddThemeFontSizeOverride("font_size", 16);
+		button.Pressed += () => StartGame("", tiling);
+		box.AddChild(button);
+
+		var blurbLabel = new Label {
+			Text = blurb,
+			HorizontalAlignment = HorizontalAlignment.Center,
+			AutowrapMode = TextServer.AutowrapMode.WordSmart,
+		};
+		blurbLabel.AddThemeFontSizeOverride("font_size", 12);
+		blurbLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.7f, 0.78f, 1.0f));
+		box.AddChild(blurbLabel);
 	}
 
 	private void OnLoadPressed() {
@@ -85,25 +102,30 @@ public partial class TitleScreen : Control {
 
 	private void LoadSaved(int index) {
 		string path = _savedPaths[index];
-		if (GridFile.Load(path, out string error) == null) {
+		SavedGrid saved = GridFile.Load(path, out string error);
+		if (saved == null) {
 			_messageLabel.Text = $"Can't load this grid: {error}.";
 			_messageLabel.AddThemeColorOverride("font_color", new Color(1.0f, 0.45f, 0.45f, 1.0f));
 			return;
 		}
-		StartGame(path);
+		StartGame(path, saved.Tiling);
 	}
 
-	private void StartGame(string gridFilePath) {
+	private void StartGame(string gridFilePath, TilingKind tiling) {
 		GameManager.Instance.GridFilePath = gridFilePath;
+		GameManager.Instance.Tiling = tiling;
 		GetTree().ChangeSceneToFile(MainScenePath);
 	}
 
-	// "grid_20261027_231500.json" -> "2026-10-27 23:15:00"; a file not named by
-	// the exporter just shows its own name.
+	// "grid_20261027_231500.json" -> "2026-10-27 23:15:00 - Penrose" (and
+	// "grid_hat_..." -> "... - Einstein"); a file not named by the exporter just
+	// shows its own name.
 	private static string DisplayName(string path) {
 		string name = path.GetFile().GetBaseName();
-		if (name.StartsWith("grid_") && DateTime.TryParseExact(name.Substring(5), "yyyyMMdd_HHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime time))
-			return time.ToString("yyyy-MM-dd HH:mm:ss");
+		TilingKind tiling = GridFile.TilingFromFileName(path);
+		string prefix = tiling == TilingKind.Hat ? "grid_hat_" : "grid_";
+		if (name.StartsWith(prefix) && DateTime.TryParseExact(name.Substring(prefix.Length), "yyyyMMdd_HHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime time))
+			return $"{time:yyyy-MM-dd HH:mm:ss} - {tiling.DisplayName()}";
 		return name;
 	}
 }

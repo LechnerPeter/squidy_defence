@@ -16,6 +16,8 @@ public static partial class GameData {
 	// A triangle only ever closes around one vertex as 2 thick + 1 thin or 1 thick + 2 thin
 	// tiles (the angles can't reach 360 degrees any other way), so a recipe whose ingredients
 	// all need the same tile shape (see DamagingBase.NeedsThinTile) can never be built.
+	// (A hat board has one tile shape, so nothing there needs any particular one - see
+	// Main.RequiredTileIsThin.)
 	public static readonly Dictionary<string, Dictionary<string, int>> TriangleMergeRecipes = new Dictionary<string, Dictionary<string, int>> {
 		{ "long_range_frost", new Dictionary<string, int> { { "cannon", 2 }, { "frost", 1 } } },
 		{ "auto_cannon", new Dictionary<string, int> { { "basic", 1 }, { "cannon", 1 }, { "lightning", 1 } } },
@@ -27,12 +29,14 @@ public static partial class GameData {
 		{ "outpost", new Dictionary<string, int> { { "wall", 3 } } },
 	};
 
-	// A Big Outpost forms at a Penrose vertex where at least this many tiles meet
+	// A Big Outpost forms at a tiling vertex where at least this many tiles meet
 	// (see Main.FindBigOutpost) - unlike the old fixed 6-cell shape, the real
 	// required wall count is however many tiles that specific vertex's ring
-	// actually has, computed at search time. This constant is only the minimum
-	// floor and the shop's rough cost estimate (see Main.RecipeRequirements /
-	// MissingT1Cost, and TowerT2Hints's matching hint text).
-	public const int BigOutpostMinRingSize = 5;
-	public static readonly Dictionary<string, int> BigOutpostRequired = new Dictionary<string, int> { { "wall", BigOutpostMinRingSize } };
+	// actually has, computed at search time. This is only the minimum floor and
+	// the shop's rough cost estimate (see Main.RecipeRequirements / MissingT1Cost,
+	// and TowerT2Hints's matching hint text). Up to 7 Penrose tiles can meet at a
+	// vertex, but never more than 4 hats (four 90-degree corners), so on a hat
+	// board the floor is 4 - that tiling's biggest junction.
+	public static int BigOutpostMinRingSize => CurrentTiling == TilingKind.Hat ? 4 : 5;
+	public static Dictionary<string, int> BigOutpostRequired => new Dictionary<string, int> { { "wall", BigOutpostMinRingSize } };
 }
